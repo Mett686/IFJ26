@@ -1,24 +1,20 @@
 CC = gcc
 CFLAGS = -pedantic -Wall -Wextra
 LDLIBS = 
-nazev = unnamed
+nazev = IFJ-archiv
 
-all:
-
--include *.d
+build:
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-
-run: primes primes-i
-	ulimit -s unlimited && ./primes
-	ulimit -s unlimited && ./primes-i
+test: 
+	
 
 clean:
-	rm -f *.o *.d
+	rm -f *.zip *.o
 
 zip:
-	zip $(xlogin).zip *.c *.h Makefile
+	zip -r $(nazev).zip src/ dokumentace.pdf rozdeleni Makefile tests/
 
-.PHONY: all run clean zip
+.PHONY: all test clean zip
