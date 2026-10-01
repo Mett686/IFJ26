@@ -9,7 +9,7 @@
 
 uint32_t hashFunction(char* key, uint32_t offset);
 
-htab_t* htabCreate(size_t n, size_t dataSize);
+htab_t* htabCreate(uint32_t n, size_t dataSize);
 void htabWipe(htab_t* t);
 void htabDestroy(htab_t* t);
 

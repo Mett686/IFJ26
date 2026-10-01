@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Cely soubor byl vygenerovan AI!
+# Soubor vygenerovan AI! mirne upraven
 # https://share.gemini.google/5d3e7oRA4geQ
 
 

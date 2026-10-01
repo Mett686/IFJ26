@@ -1,4 +1,5 @@
 // Vygenerovano AI! pote upraveno
+// https://share.gemini.google/5d3e7oRA4geQ
 
 #include <stdio.h>
 #include <assert.h>
@@ -44,6 +45,10 @@ int main() {
     printf("  [TEST] htabWriteNew (existing key)...\n");
     assert(!htabWriteNew(table, "testKey3", &val3));
     assert(*(int*)htabGet(table, "testKey3") == val1);
+
+    printf("  [TEST] htabWrite(New) (table space check)...\n");
+    assert(!htabWrite(table, "testKey4", &val1));
+    assert(!htabWrite(table, "testKey4", &val1));
 
     printf("  [TEST] htabResize (valid resize)...\n");
     htabResize(table, 10);

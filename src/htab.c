@@ -3,9 +3,6 @@
 // Kod prebran a upraven z projektu do IJC
 
 
-//TODO check malloc
-//TODO check table fullness
-
 #include "htab_private.h"
 
 #define FNV_PRIME 16777619u
@@ -23,7 +20,7 @@ uint32_t hashFunction(char* key, uint32_t offset) {
 }
 
 // Creates and initializes table
-htab_t* htabCreate(size_t n, size_t dataSize) {
+htab_t* htabCreate(uint32_t n, size_t dataSize) {
   htab_t* t = malloc(sizeof(htab_t));
   if(t) {
     size_t itemSize = dataSize + sizeof(htabItem_t);
@@ -34,6 +31,7 @@ htab_t* htabCreate(size_t n, size_t dataSize) {
     }
     t->capacity = n;
     t->size = 0;
+    t->threshold = (n*3)>>2;
     t->itemSize = itemSize;
     t->dataSize = dataSize;
     htabItem_t* item = t->table;
@@ -48,7 +46,7 @@ htab_t* htabCreate(size_t n, size_t dataSize) {
 // Wipes table clean
 void htabWipe(htab_t* t) {
   htabItem_t* item = t->table;
-  for(size_t i = 0; i < t->capacity; i++) {
+  for(uint32_t i = 0; i < t->capacity; i++) {
     free(item->key);
     item->key = NULL;
     item = (htabItem_t*)((char*)item + t->itemSize);
@@ -59,7 +57,7 @@ void htabWipe(htab_t* t) {
 // Destroys table
 void htabDestroy(htab_t* t) {
   htabItem_t* item = t->table;
-  for(size_t i = 0; i < t->capacity; i++) {
+  for(uint32_t i = 0; i < t->capacity; i++) {
     free(item->key);
     item = (htabItem_t*)((char*)item + t->itemSize);
   }
@@ -70,7 +68,7 @@ void htabDestroy(htab_t* t) {
 // Executes f on each item in table (empty included)
 void htabForEach(htab_t* t, void (*f)(htabItem_t* item)) {
   htabItem_t* item = t->table;
-  for(size_t i = 0; i < t->capacity; i++) {
+  for(uint32_t i = 0; i < t->capacity; i++) {
     f(item);
     item = (htabItem_t*)((char*)item + t->itemSize);
   }
@@ -105,7 +103,9 @@ htabItem_t* htabFindKey(htab_t* t, char* key) {
 htabItem_t* htabWrite(htab_t* t, char* key, void* data) {
   htabItem_t* item = htabFindKey(t, key);
   if(!item->key) {
+    if(t->size >= t->threshold) return NULL;
     item->key = malloc(strlen(key) + 1);
+    if(!item->key) return NULL; // Error exit?
     strcpy(item->key, key);
     item->hash = hashFunction(key, OFFSET_BASIS);
     t->size++;
@@ -114,11 +114,13 @@ htabItem_t* htabWrite(htab_t* t, char* key, void* data) {
   return item;
 }
 
-// Writes data to table, returns NULL if entry already exists
+// Writes data to table
+// returns NULL if entry already exists or there is not enough room in table
 htabItem_t* htabWriteNew(htab_t* t, char* key, void* data) {
   htabItem_t* item = htabFindKey(t, key);
-  if(!item->key) {
+  if(!item->key && t->size < t->threshold) {
     item->key = malloc(strlen(key) + 1);
+    if(!item->key) return NULL;
     strcpy(item->key, key);
     item->hash = hashFunction(key, OFFSET_BASIS);
     t->size++;
@@ -138,7 +140,8 @@ void* htabGet(htab_t* t, char* key) {
 }
 
 htabItem_t* htabResize(htab_t* t, uint32_t capacity) {
-  if((capacity*3)>>2 < t->size) return NULL; 
+  uint32_t threshold = (capacity*3)>>2;
+  if(threshold < t->size) return NULL; 
   htab_t* new = htabCreate(capacity, t->dataSize);
   if(!new) return NULL;
 
@@ -161,6 +164,7 @@ htabItem_t* htabResize(htab_t* t, uint32_t capacity) {
   t->capacity = capacity;
   free(t->table);
   t->table = new->table;
+  t->threshold = threshold;
   free(new);
   return t->table;
 }

@@ -8,15 +8,16 @@ typedef struct htabItem {
 } htabItem_t;
 
 typedef struct htab {
-  size_t capacity;
-  size_t size;
+  uint32_t capacity;
+  uint32_t size;
+  uint32_t threshold;
   size_t itemSize;
   size_t dataSize;
   htabItem_t* table;
 } htab_t;
 
 // Creates and initializes table
-htab_t* htabCreate(size_t n, size_t dataSize);
+htab_t* htabCreate(uint32_t n, size_t dataSize);
 
 // Wipes table clean
 void htabWipe(htab_t* t);
