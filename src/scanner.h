@@ -47,6 +47,6 @@ const bool isAPosNum[128] = {[49] = 1, 1, 1, 1, 1, 1, 1, 1, 1,};
 //const bool isAZero[128];
 const bool isALetter[128] = {[65] = 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, [97] = 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,}; 
 const bool isALetterOrANum[128]; //TODO
-const bool isAnEscSeq[128]; //TODO
+const bool isAnEscSeq[128] = {[34] = 1, [92] = 1, [110] = 1, [114] = 1, [116] = 1};
 const bool isAWhitespace[128]; //TODO
 const char AT_MAIN[] = "@main";
