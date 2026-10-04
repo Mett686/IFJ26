@@ -9,20 +9,46 @@ int getToken() {
     int c;
     while ((c = getc(stream)) != EOF) //ungetc(c, stream)
     {
-        /* code */
         switch (state) //https://share.gemini.google/zIizBiReNRVX
         {
         case ST_START:
+            //TODO main, whitespaces
+            if(c == '0') state = ST_ZERO_BEGINNING;
+            else if (isAPosNum[c]) state = ST_NONZERO_BEGINNING;
+            else if (c == '-') state = ST_MINUS;
+            else if (c == '+') state = ST_PLUS;
+            else if (c == '/') state = ST_DIVISION_SLASH;
+            else if (c == '*') state = ST_TIMES;
+            else if (c == ',') state = ST_COMMA;
+            else if (c == ':') state = ST_COLON;
+            else if (c == ';') state = ST_SEMICOLON;
+            else if (c == '!') state = ST_NOT;
+            else if (c == '=') state = ST_EQUAL_SIGN;
+            else if (c == '>') state = ST_GREATER;
+            else if (c == '<') state = ST_LESS;
+            else if (isALetter[c]) state = ST_ID;
+            else if (c == '_') state = ST_EXT_UNDERSCORE;
+            else if (c == ')') state = ST_CLOSING_PARENTHESES;
+            else if (c == '(') state = ST_OPENING_PARENTHESES;
+            else if (c == '"') state = ST_OPENING_QUOTATION_MARK;
             break;
         case ST_EOF:
-            break;
+            return TKN_EOF;
+            //break;
         case ST_AT_MAIN:
             break;
         case ST_INDENTATION:
             break;
         case ST_ZERO_BEGINNING:
+            if (c == '0') state = ST_ZERO_BEGINNING;
+            else if (c == '_') state = ST_ZB_UNDERSCORE;
+            else if (c == '.') state = ST_DOUBLE_DECIMAL_DOT;
+            else if (isAPosNum[c]) state = ST_INTEGER_PART;
+            else return TKN_INT; //0
             break;
         case ST_ZB_UNDERSCORE:
+            if (isANum[c]) state = ST_ZERO_BEGINNING;
+            //else error?;
             break;
         case ST_NONZERO_BEGINNING:
             break;
