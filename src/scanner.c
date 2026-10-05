@@ -7,12 +7,12 @@ int getToken() {
     enum EState state = ST_START;
     FILE* stream = stdin;
     int c;
+    bool inParentheses = false;
     while ((c = getc(stream)) != EOF) //ungetc(c, stream)
     {
         switch (state) //https://share.gemini.google/zIizBiReNRVX
         {
         case ST_START:
-            //TODO main, whitespaces
             if(c == '0') state = ST_ZERO_BEGINNING;
             else if (isAPosNum[c]) state = ST_NONZERO_BEGINNING;
             else if (c == '-') state = ST_MINUS;
@@ -31,15 +31,26 @@ int getToken() {
             else if (c == ')') state = ST_CLOSING_PARENTHESES;
             else if (c == '(') state = ST_OPENING_PARENTHESES;
             else if (c == '"') state = ST_OPENING_QUOTATION_MARK;
-            //else error
+            else if (c == '@') state = ST_AT_MAIN;
+            else if (c == '10' && !inParentheses) state = ST_INDENTATION;
+            else if (c <= 127) break; //zbylé ASCII ingoruji
+            else state = ST_LEX_ERROR_1; //neASCII error
             break;
         case ST_EOF:
             return TKN_EOF;
-            //break;
-        case ST_AT_MAIN: //split into 5 states?
+        case ST_AT_MAIN:
+            if (getc(stream) == 'm' &&
+                getc(stream) == 'a' &&
+                getc(stream) == 'i' &&
+                getc(stream) == 'n')
+                    return TKN_AT_MAIN;
+            else state = ST_LEX_ERROR_1;
             break;
         case ST_INDENTATION:
-            while ((c = getc(stream)) == ' ') //count spaces
+            unsigned spaces = 0;
+            while ((c = getc(stream)) == ' ') spaces++;
+            ungetc(c, stream);
+            return TKN_INDENTATION; //i nula
             break;
         case ST_ZERO_BEGINNING:
             if (c == '0') break; //stays
@@ -50,7 +61,7 @@ int getToken() {
             break;
         case ST_ZB_UNDERSCORE:
             if (isANum[c]) state = ST_ZERO_BEGINNING;
-            //else error?;
+            else state = ST_LEX_ERROR_1;
             break;
         case ST_NONZERO_BEGINNING:
             if (isANum[c]) break; //stays
@@ -60,11 +71,11 @@ int getToken() {
             break;
         case ST_NZB_UNDERSCORE:
             if (isANum[c]) state = ST_NONZERO_BEGINNING;
-            //else error;
+            else state = ST_LEX_ERROR_1;
             break;
         case ST_DOUBLE_DECIMAL_DOT:
             if (isANum[c]) state = ST_DECIMAL_PART;
-            //else error;
+            else state = ST_LEX_ERROR_1;
             break;
         case ST_DECIMAL_PART:
             if (isANum[c]) break; //stays 
@@ -75,7 +86,7 @@ int getToken() {
             break;
         case ST_DP_UNDERSCORE:
             if (isANum[c]) state = ST_DECIMAL_PART;
-            //else error;
+            else state = ST_LEX_ERROR_1;
             break;
         case ST_INTEGER_PART:
             if (isANum[c]) break; //stays
@@ -85,16 +96,16 @@ int getToken() {
             break;
         case ST_IP_UNDERSCORE:
             if (isANum[c]) state = ST_INTEGER_PART;
-            //else error;
+            else state = ST_LEX_ERROR_1;
             break;
         case ST_EXP_PREFIX:
             if (isANum[c]) state = ST_EXPONENT;
             else if (c == '+' || c == '-') state = ST_EXP_SING;
-            //else error;
+            else state = ST_LEX_ERROR_1;
             break;
         case ST_EXP_SING:
             if (isANum[c]) state = ST_EXPONENT;\
-            //else error;
+            else state = ST_LEX_ERROR_1;
             break;
         case ST_EXPONENT:
             if (isANum[c]) break; //stays
@@ -104,7 +115,7 @@ int getToken() {
             break;
         case ST_EXP_UNDERSCORE:
             if (isANum[c]) state = ST_EXPONENT;
-            //else error;
+            else state = ST_LEX_ERROR_1;
             break;
         case ST_DOUBLE_SUFIX:
             return TKN_DOUBLE;
@@ -143,7 +154,7 @@ int getToken() {
         case ST_EQUAL_SIGN:
             if (c == '=') state = ST_DOUBLE_EQUAL_SIGN;
             else if (c == '>') state = ST_EXT_EQUAL_GREATER;
-            //else error;
+            else state = ST_LEX_ERROR_1;
             break;
         case ST_DOUBLE_EQUAL_SIGN:
             return TKN_EQUAL;
@@ -151,23 +162,28 @@ int getToken() {
             return TKN_EXT_EQUAL_GREATER;
         case ST_NOT:
             if (c == '=') state = ST_NOT_EQUAL;
-            //else error;
+            else state = ST_LEX_ERROR_1;
             break;
         case ST_NOT_EQUAL:
             return TKN_NOT_EQUAL;
-        case ST_OPENING_BLOCK_COMMENT: //požrat vše, while loop na vnořené
-            break;
-        case ST_ASTERISK_IN_BLOCK_COMMENT:
-            break;
-        case ST_ENDING_BLOCK_COMMENT:
-            break;
-        case ST_BLOCK_COMMENT_WITH_LF:
-            break;
-        case ST_ASTERISK_BLOCK_COMMENT_WITH_LF:
-            break;
-        case ST_ENDING_BLOCK_COMMENT_WITH_LF:
-            break;
+        case ST_OPENING_BLOCK_COMMENT: //řeší i jiné stavy z FSM
+            unsigned depthCount = 1;
+            bool asNewLine = false;
+            while (depthCount) {
+                c = getc(stream);
+                if (c == '10') asNewLine = true;
+                else if (c == '/')
+                    if ((c = getc(stream)) == '*')
+                        depthCount++;
+                    else if (c == '10') asNewLine = true; 
+                else if (c == '*')
+                    if ((c = getc(stream)) == '/')
+                        depthCount--;
+                    else if (c == '10') asNewLine = true;
+            } 
+            break;        
         case ST_DOUBLE_SLASH_COMMENT:
+            if (c == '10') state = ST_INDENTATION; //komentář jako LF 
             break;
         case ST_EXT_VERTICAL_LINE:
             return TKN_EXT_VERTICAL_LINE;
@@ -183,19 +199,21 @@ int getToken() {
             if (isALetterOrANum[c]) break;
             else return TKN_ID;
             break;
-        case ST_OPENING_PARENTHESES:
-            if (c == 10); //LF, TODO BEHAVES AS A WHITESPACE
-            else if (c == ')') state = ST_UNIT;
+        case ST_OPENING_PARENTHESES: //LF BEHAVES AS A WHITESPACE IN PARENTHESES
+            inParentheses = true;
+            if (c == ')') state = ST_UNIT;
             else return TKN_OPENING_PARENTHESES;
             break;
         case ST_CLOSING_PARENTHESES:
+            inParentheses = false;
             return TKN_CLOSING_PARENTHESES;
         case ST_UNIT:
+            inParentheses = false;
             return TKN_UNIT;
         case ST_OPENING_QUOTATION_MARK:
             if(c == '"') state = ST_TWO_QUOTATION_MARKS;
             else if (c == '\\') state = ST_IN_ESC_SEQ;
-            else if (c == 10); //LF, TODO
+            else if (c == 10) state = ST_LEX_ERROR_1;
             else state = state = ST_IN_STRING;
             break;
         case ST_TWO_QUOTATION_MARKS:
@@ -204,8 +222,7 @@ int getToken() {
             break;
         case ST_MULTILINE_STRING:
             if (c == '"') state = ST_FIRST_CLOSING_QUATATION_MARK_IN_A_MULTILINE_STRING;
-            //else break; //stays
-            break;
+            break; //else just stays
         case ST_FIRST_CLOSING_QUATATION_MARK_IN_A_MULTILINE_STRING:
             if (c == '"') state = ST_SECOND_CLOSING_QUATATION_MARK_IN_A_MULTILINE_STRING;
             else state = ST_MULTILINE_STRING;
@@ -219,15 +236,17 @@ int getToken() {
         case ST_IN_STRING:
             if (c == '"') state = ST_ENDING_STRING;
             else if (c == '\\') state = ST_IN_ESC_SEQ;
-            else if (c == 10); //LF, TODO
-            //else break; //stays
-            break;
+            else if (c == 10) state = ST_LEX_ERROR_1;
+            break; //else just stays
         case ST_IN_ESC_SEQ:
             if (isAnEscSeq[c]) state = ST_IN_STRING;
-            //else LexErr1;
+            else state = ST_LEX_ERROR_1;
             break;
         case ST_ENDING_STRING:
             return TKN_STRING;
+        case ST_LEX_ERROR_1:
+            //TODO
+            //TODO všechny možnosti chyb, minimálně chybí tabulátor a pak nic   
         }
     }
     return TKN_EOF;
