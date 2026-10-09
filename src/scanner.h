@@ -1,5 +1,24 @@
 #include <stdbool.h>
 
+#define STRING_STARTING_CAPACITY 64
+
+typedef struct{
+    unsigned capacity;
+    unsigned length; //bez NTC
+    char* str;
+} string_t;
+
+void stringAppend(string_t* string, int c){
+    if(string->length == string->capacity){
+        string->str = realloc(string->str, string->capacity*2);
+        if(string->str == NULL)
+            abort();
+        string->capacity = string->capacity*2;
+    }
+    string->str[string->length++] = c;
+    string->str[string->length] = '\0';
+}
+
 enum EState {
     ST_EOF = -1,
     ST_START,
@@ -22,7 +41,7 @@ enum EState {
     ST_LEX_ERROR_1
 };
 
-enum ETokenType{
+enum ETokenType{ //TODO add newline
     TKN_NONE = 0,
     TKN_ID,
     TKN_AT_MAIN, TKN_EOF,
@@ -32,7 +51,9 @@ enum ETokenType{
     TKN_DO, TKN_WHILE,
     TKN_IF, TKN_ELSE, TKN_THEN,
     TKN_IMPORT,
+    TKN_IFJ26dot_asterisk,
     TKN_RETURN,
+    TKN_NEWLINE,
     TKN_INDENTATION,
     TKN_MINUS, TKN_PLUS,
     TKN_COMMA, TKN_COLON, TKN_SEMICOLON,
@@ -43,11 +64,19 @@ enum ETokenType{
     TKN_EXT_BOOLEAN, TKN_EXT_CASE, TKN_EXT_CLASS, TKN_EXT_EXTENSION, TKN_EXT_FOR, TKN_EXT_LIST, TKN_EXT_MATCH, TKN_EXT_TYPE, TKN_EXT_EQUAL_GREATER, TKN_EXT_VERTICAL_LINE, TKN_EXT_LESS_MINUS, TKN_EXT_UNDERSCORE
 };
 
+typedef struct {
+    enum ETokenType type;
+    union{
+        int intValue; //TODO rozsah
+        double doubleValue;
+        char* string;
+    };
+} token_t;
+
 const bool isANum[128] = {[48] = 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,};
 const bool isAPosNum[128] = {[49] = 1, 1, 1, 1, 1, 1, 1, 1, 1,};
-//const bool isAZero[128];
 const bool isALetter[128] = {[65] = 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, [97] = 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,}; 
 const bool isALetterOrANum[128]; //TODO
 const bool isAnEscSeq[128] = {[34] = 1, [92] = 1, [110] = 1, [114] = 1, [116] = 1};
-const bool isAWhitespace[128]; //TODO
+const bool isAWhitespaceExceptNL[128] = {1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,[127]=1};
 const char AT_MAIN[] = "@main";
