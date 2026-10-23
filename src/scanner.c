@@ -4,10 +4,14 @@
 #include <stdlib.h>
 
 /** *
-*
+ * pred
+* @param stream
+za
+* @param  d
  */
 token_t getToken(FILE* stream) {
     static bool lastTokenNL = false;
+    static unsigned lastIndentation = 0;
     enum EState state = ST_START;
     if(lastTokenNL)
         state = ST_INDENTATION;
@@ -102,12 +106,16 @@ token_t getToken(FILE* stream) {
                 break;
             } 
             ungetc(c, stream);
-            token.type = TKN_INDENTATION;
-            token.intValue = (int)spaces;
+            if (spaces > lastIndentation)
+                token.type = TKN_INDENTATION;
+            else if (spaces < lastIndentation)
+                token.type = TKN_DEDENTANTION;
+            else
+                break;
+            lastIndentation = spaces;
             lastTokenNL = false;
             free(string.str);
-            return token; //i nula
-            break;
+            return token;
         case ST_ZERO_BEGINNING:      
             if (c == '0') break; //stays in this state, string stays at 0
             else if (c == '_') state = ST_ZB_UNDERSCORE;

@@ -1,5 +1,7 @@
 #include <stdbool.h>
 
+token_t getToken(FILE* stream);
+
 typedef enum {
     ST_EOF = -1,
     ST_START,
@@ -35,7 +37,7 @@ typedef enum { //TODO add newline
     TKN_IFJ26dot_asterisk,
     TKN_RETURN,
     TKN_NEWLINE,
-    TKN_INDENTATION,
+    TKN_INDENTATION, TKN_DEDENTANTION,
     TKN_MINUS, TKN_PLUS,
     TKN_COMMA, TKN_COLON, TKN_SEMICOLON,
     TKN_DIVISION_SLASH, TKN_TIMES,
