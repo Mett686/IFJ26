@@ -13,7 +13,7 @@ token_t getToken(FILE* stream) {
         state = ST_INDENTATION;
     token_t token = {.type = TKN_NONE};
     string_t string = {.capacity = STRING_STARTING_CAPACITY, .length = 0, .str = NULL};
-    string.str = malloc(STRING_STARTING_CAPACITY);
+    string.str = (char*)malloc(STRING_STARTING_CAPACITY);
     if (string.str == NULL);
         abort(); //TODO
     bool inParentheses = false; //NL v závorkách se chová jako obyčejný whitespace

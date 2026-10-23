@@ -1,2 +1,2 @@
-#bin/bash
+#!/bin/bash
 #zde bude skript pro spousteni testu
