@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define STR_CMP(i, c) (string.str[i] == (c))
+
 token_t getToken(FILE* stream) {
     static bool lastTokenNL = false;
     enum EState state = ST_START;
@@ -437,84 +439,84 @@ token_t getToken(FILE* stream) {
                         break;
                     }
                 }
-                if (/*do, if*/ 2 <= string.length && string.length <= 9 /*extension*/) { //https://share.gemini.google/uzB0xNxAyMXs
-                    switch (string.str[0]) //todo makra na zkraceni zapisu?
+                if (/*if, do*/ 2 <= string.length && string.length <= 9 /*extension*/) { //https://share.gemini.google/8uokgShJwRjS; https://share.gemini.google/8uokgShJwRjS
+                    switch (string.str[0]) 
                     {
-                        case 'c': //case, class 
-                            if (string.length == 4 && string.str[1] == 'a' && string.str[2] == 's' && string.str[3] == 'e')
+                        case 'c': // case, class 
+                            if (string.length == 4 && STR_CMP(1, 'a') && STR_CMP(2, 's') && STR_CMP(3, 'e'))
                                 token.type = TKN_EXT_CASE;
-                            else if (string.length == 5 && string.str[1] == 'l' && string.str[2] == 'a' && string.str[3] == 's' && string.str[4] == 's')
+                            else if (string.length == 5 && STR_CMP(1, 'l') && STR_CMP(2, 'a') && STR_CMP(3, 's') && STR_CMP(4, 's'))
                                 token.type = TKN_EXT_CLASS;
                             break;
-                        case 'd': //def, do
-                            if (string.length == 2 && string.str[1] == 'o')
+                        case 'd': // def, do
+                            if (string.length == 2 && STR_CMP(1, 'o'))
                                 token.type = TKN_DO;
-                            else if (string.length == 3 && string.str[1] == 'e' && string.str[2] == 'f')
+                            else if (string.length == 3 && STR_CMP(1, 'e') && STR_CMP(2, 'f'))
                                 token.type = TKN_DEF;
                             break;
-                        case 'D': //Double
-                            if (string.length == 6 && string.str[1] == 'o' && string.str[2] == 'u' && string.str[3] == 'b' && string.str[4] == 'l' && string.str[5] == 'e')
+                        case 'D': // Double
+                            if (string.length == 6 && STR_CMP(1, 'o') && STR_CMP(2, 'u') && STR_CMP(3, 'b') && STR_CMP(4, 'l') && STR_CMP(5, 'e'))
                                 token.type = TKN_DOUBLE;
                             break;
-                        case 'e': //extension, else
-                            if (string.length == 4 && string.str[1] == 'l' && string.str[2] == 's' && string.str[3] == 'e')
+                        case 'e': // extension, else
+                            if (string.length == 4 && STR_CMP(1, 'l') && STR_CMP(2, 's') && STR_CMP(3, 'e'))
                                 token.type = TKN_ELSE;
-                            else if (string.length == 9 && string.str[1] == 'x' && string.str[2] == 't' && string.str[3] == 'e' && string.str[4] == 'n' && string.str[5] == 's' && string.str[6] == 'i' && string.str[7] == 'o' && string.str[8] == 'n')
+                            else if (string.length == 9 && STR_CMP(1, 'x') && STR_CMP(2, 't') && STR_CMP(3, 'e') && STR_CMP(4, 'n') && STR_CMP(5, 's') && STR_CMP(6, 'i') && STR_CMP(7, 'o') && STR_CMP(8, 'n'))
                                 token.type = TKN_EXT_EXTENSION;
                             break;
-                        case 'f': //for
-                            if (string.length == 3 && string.str[1] == 'o' && string.str[2] == 'r')
-                                token.type == TKN_EXT_FOR;
+                        case 'f': // for
+                            if (string.length == 3 && STR_CMP(1, 'o') && STR_CMP(2, 'r'))
+                                token.type = TKN_EXT_FOR;
                             break;
-                        case 'i': //if, import
-                            if (string.length == 2 && string.str[1] == 'f')
+                        case 'i': // if, import
+                            if (string.length == 2 && STR_CMP(1, 'f'))
                                 token.type = TKN_IF;
-                            else if (string.length == 6 && string.str[1] == 'm' && string.str[2] == 'p' && string.str[3] == 'o' && string.str[4] == 'r' && string.str[5] == 't')
+                            else if (string.length == 6 && STR_CMP(1, 'm') && STR_CMP(2, 'p') && STR_CMP(3, 'o') && STR_CMP(4, 'r') && STR_CMP(5, 't'))
                                 token.type = TKN_IMPORT;
                             break;
-                        case 'I': //Int
-                            if (string.length == 3 && string.str[1] == 'n' && string.str[2] == 't')
+                        case 'I': // Int
+                            if (string.length == 3 && STR_CMP(1, 'n') && STR_CMP(2, 't'))
                                 token.type = TKN_INT;
                             break;
-                        case 'L': //List
-                            if (string.length == 4 && string.str[1] == 'i' && string.str[2] == 's' && string.str[3] == 't')
+                        case 'L': // List
+                            if (string.length == 4 && STR_CMP(1, 'i') && STR_CMP(2, 's') && STR_CMP(3, 't'))
                                 token.type = TKN_EXT_LIST;
                             break;
-                        case 'm': //match
-                            if (string.length == 5 && string.str[1] == 'a' && string.str[2] == 't' && string.str[3] == 'c' && string.str[4] == 'h')
+                        case 'm': // match
+                            if (string.length == 5 && STR_CMP(1, 'a') && STR_CMP(2, 't') && STR_CMP(3, 'c') && STR_CMP(4, 'h'))
                                 token.type = TKN_EXT_MATCH;
                             break;
-                        case 'r': //return
-                            if (string.length == 6 && string.str[1] == 'e' && string.str[2] == 't' && string.str[3] == 'u' && string.str[4] == 'r' && string.str[5] == 'n')
+                        case 'r': // return
+                            if (string.length == 6 && STR_CMP(1, 'e') && STR_CMP(2, 't') && STR_CMP(3, 'u') && STR_CMP(4, 'r') && STR_CMP(5, 'n'))
                                 token.type = TKN_RETURN;
                             break;
-                        case 'S': //String
-                            if (string.length == 6 && string.str[1] == 't' && string.str[2] == 'r' && string.str[3] == 'i' && string.str[4] == 'n' && string.str[5] == 'g')
+                        case 'S': // String
+                            if (string.length == 6 && STR_CMP(1, 't') && STR_CMP(2, 'r') && STR_CMP(3, 'i') && STR_CMP(4, 'n') && STR_CMP(5, 'g'))
                                 token.type = TKN_STRING;
                             break;
-                        case 't': //then, type
+                        case 't': // then, type
                             if (string.length == 4){
-                                if (string.str[1] == 'h' && string.str[2] == 'e' && string.str[3] == 'n')
+                                if (STR_CMP(1, 'h') && STR_CMP(2, 'e') && STR_CMP(3, 'n'))
                                     token.type = TKN_THEN;
-                                else if (string.str[1] == 'y' && string.str[2] == 'p' && string.str[3] == 'e')
+                                else if (STR_CMP(1, 'y') && STR_CMP(2, 'p') && STR_CMP(3, 'e'))
                                     token.type = TKN_EXT_TYPE;
                             }
                             break;
-                        case 'U': //Unit
-                            if (string.length == 4 && string.str[1] == 'n' && string.str[2] == 'i' && string.str[3] == 't')
+                        case 'U': // Unit
+                            if (string.length == 4 && STR_CMP(1, 'n') && STR_CMP(2, 'i') && STR_CMP(3, 't'))
                             break;
-                        case 'v': //val, var
-                            if (string.length == 3 && string.str[1] == 'a')
-                                if(string.str[2] == 'l')
+                        case 'v': // val, var
+                            if (string.length == 3 && STR_CMP(1, 'a'))
+                                if(STR_CMP(2, 'l'))
                                     token.type = TKN_VAL;
-                                else if(string.str[2] == 'r')
+                                else if(STR_CMP(2, 'r'))
                                     token.type = TKN_VAR;
                             break;
-                        case 'w': //while
-                            if (string.length == 5 && string.str[1] == 'h' && string.str[2] == 'i' && string.str[3] == 'l' && string.str[4] == 'e')
+                        case 'w': // while
+                            if (string.length == 5 && STR_CMP(1, 'h') && STR_CMP(2, 'i') && STR_CMP(3, 'l') && STR_CMP(4, 'e'))
                             break;
-                    default:
-                        break;
+                        default:
+                            break;
                     }
                 }
             }
