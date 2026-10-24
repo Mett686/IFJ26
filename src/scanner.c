@@ -3,9 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/** *
-*
- */
 token_t getToken(FILE* stream) {
     static bool lastTokenNL = false;
     enum EState state = ST_START;
@@ -369,6 +366,16 @@ token_t getToken(FILE* stream) {
                 } 
             }
             if(asNewLine){
+                while ((c = getc(stream)) != 10 /*nl*/){
+                    if(c == EOF){
+                        state = ST_EOF;
+                        break;
+                    }
+                    if(c < 0 || 32 < c && c != 127){
+                        state = ST_LEX_ERROR_1;
+                        break;
+                    }
+                }
                 token.type = TKN_NEWLINE;
                 lastTokenNL = true;
                 free(string.str);

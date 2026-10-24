@@ -1,5 +1,21 @@
 #include <stdbool.h>
 
+typedef struct {
+    ETokenType type;
+    union {
+        int intValue; //TODO rozsah
+        double doubleValue;
+        char* string;
+    };
+} token_t;
+
+/** *
+ * Function returns one token. In case of a token type TKN_ID the caller is responsible for freeing token_t.string.
+ * TODO Or ends the program with lexical error.
+ * @param stream function takes one paramatre, that is FILE* whence the input shall be found  
+ */
+token_t getToken(FILE* stream);
+
 typedef enum {
     ST_EOF = -1,
     ST_START,
@@ -45,12 +61,5 @@ typedef enum { //TODO add newline
     TKN_EXT_BOOLEAN, TKN_EXT_CASE, TKN_EXT_CLASS, TKN_EXT_EXTENSION, TKN_EXT_FOR, TKN_EXT_LIST, TKN_EXT_MATCH, TKN_EXT_TYPE, TKN_EXT_EQUAL_GREATER, TKN_EXT_VERTICAL_LINE, TKN_EXT_LESS_MINUS, TKN_EXT_UNDERSCORE
 }  ETokenType;
 
-typedef struct {
-    ETokenType type;
-    union {
-        int intValue; //TODO rozsah
-        double doubleValue;
-        char* string;
-    };
-} token_t;
-//https://share.gemini.google/2iSR6yQzxtX5 KONEC LOOKUP POLÍ
+
+//https://share.gemini.google/2iSR6yQzxtX5 END OF LOOK–UP ARRAYS
