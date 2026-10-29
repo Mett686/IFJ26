@@ -1,3 +1,6 @@
+// scanner_private.h
+// Autor: Filip Maxa, FIT
+
 #include <stdlib.h>
 #define STRING_STARTING_CAPACITY 64
 

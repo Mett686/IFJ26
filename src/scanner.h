@@ -1,3 +1,6 @@
+// scanner.h
+// Autor: Filip Maxa, FIT
+
 #include <stdbool.h>
 
 typedef struct {
@@ -10,9 +13,9 @@ typedef struct {
 } token_t;
 
 /** *
- * Function returns one token. In case of a token type TKN_ID the caller is responsible for freeing token_t.string.
+ * Function returns one token. In case of a token type TKN_ID, TKN_STRING or TKN_MULTILINE_STRING the caller is responsible for freeing token_t.string.
  * TODO Or ends the program with lexical error.
- * @param stream function takes one paramatre, that is FILE* whence the input shall be found  
+ * @param stream function takes one paramatre, that is FILE* where the input shall be found  
  */
 token_t getToken(FILE* stream);
 
@@ -33,7 +36,8 @@ typedef enum {
     ST_EXT_VERTICAL_LINE, ST_EXT_UNDERSCORE,
     ST_ID_UNDERSCORES, ST_ID,
     ST_OPENING_PARENTHESES, ST_CLOSING_PARENTHESES, ST_UNIT,
-    ST_OPENING_QUOTATION_MARK, ST_TWO_QUOTATION_MARKS, ST_MULTILINE_STRING, ST_FIRST_CLOSING_QUATATION_MARK_IN_A_MULTILINE_STRING, ST_SECOND_CLOSING_QUATATION_MARK_IN_A_MULTILINE_STRING, ST_ENDING_A_MULTILINE_STRING, 
+    ST_OPENING_QUOTATION_MARK, ST_TWO_QUOTATION_MARKS, ST_MULTILINE_STRING, ST_FIRST_CLOSING_QUATATION_MARK_IN_A_MULTILINE_STRING,
+    ST_SECOND_CLOSING_QUATATION_MARK_IN_A_MULTILINE_STRING, ST_ENDING_A_MULTILINE_STRING, 
     ST_IN_STRING, ST_IN_ESC_SEQ, ST_ENDING_STRING,
     ST_LEX_ERROR_1
 }  EState;
@@ -42,7 +46,7 @@ typedef enum { //TODO add newline
     TKN_NONE = 0,
     TKN_ID,
     TKN_AT_MAIN, TKN_EOF,
-    TKN_INT, TKN_DOUBLE, TKN_UNIT, TKN_STRING, TKN_MULTILINE_STRING,
+    TKN_INT, TKN_DOUBLE, TKN_UNIT, TKN_STRING_KEYWORD, TKN_STRING, TKN_MULTILINE_STRING,
     TKN_VAL, TKN_VAR,
     TKN_DEF,
     TKN_DO, TKN_WHILE,
@@ -58,7 +62,8 @@ typedef enum { //TODO add newline
     TKN_NOT_EQUAL, TKN_EQUAL,
     TKN_LESS, TKN_LESS_EQUAL, TKN_GREATER, TKN_GREATER_EQUAL,
     TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
-    TKN_EXT_BOOLEAN, TKN_EXT_CASE, TKN_EXT_CLASS, TKN_EXT_EXTENSION, TKN_EXT_FOR, TKN_EXT_LIST, TKN_EXT_MATCH, TKN_EXT_TYPE, TKN_EXT_EQUAL_GREATER, TKN_EXT_VERTICAL_LINE, TKN_EXT_LESS_MINUS, TKN_EXT_UNDERSCORE
+    TKN_EXT_BOOLEAN, TKN_EXT_CASE, TKN_EXT_CLASS, TKN_EXT_EXTENSION, TKN_EXT_FOR, TKN_EXT_LIST, 
+    TKN_EXT_MATCH, TKN_EXT_TYPE, TKN_EXT_EQUAL_GREATER, TKN_EXT_VERTICAL_LINE, TKN_EXT_LESS_MINUS, TKN_EXT_UNDERSCORE
 }  ETokenType;
 
 

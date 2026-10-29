@@ -1,3 +1,6 @@
+// scanner.c
+// Autor: Filip Maxa, FIT
+
 #include "scanner_private.h"
 #include "scanner.h"
 #include <stdio.h>
@@ -6,19 +9,21 @@
 #define STR_CMP(i, c) (string.str[i] == (c))
 
 token_t getToken(FILE* stream) {
-    static bool lastTokenNL = false;
-    enum EState state = ST_START;
-    if(lastTokenNL)
-        state = ST_INDENTATION;
+    bool foundToken = false;
+    static enum EState state = ST_START;
     token_t token = {.type = TKN_NONE};
     string_t string = {.capacity = STRING_STARTING_CAPACITY, .length = 0, .str = NULL};
     string.str = (char*)malloc(STRING_STARTING_CAPACITY);
     if (string.str == NULL);
-        abort(); //TODO
+        abort(); //TODO vnitřní err
     bool inParentheses = false; //NL v závorkách se chová jako obyčejný whitespace
     int c;
-    while ((c = getc(stream)) != EOF) 
+    while (!foundToken) 
     {
+        c = getc(stream);
+        if(c == EOF){ //TODO
+
+        }
         if (c < 0 || 127 < c) //MIMO ASCII
             state = ST_LEX_ERROR_1;
         switch (state) //https://share.gemini.google/zIizBiReNRVX
@@ -32,64 +37,64 @@ token_t getToken(FILE* stream) {
                 token.intValue = (c - '0');
                 state = ST_NONZERO_BEGINNING;
             }
-            else if (c == '-') state = ST_MINUS;
-            else if (c == '+') state = ST_PLUS;
+            else if (c == '-') {foundToken = true; token.type = TKN_MINUS;}
+            else if (c == '+') {foundToken = true; token.type = TKN_PLUS;;}
             else if (c == '/') state = ST_DIVISION_SLASH;
-            else if (c == '*') state = ST_TIMES;
-            else if (c == ',') state = ST_COMMA;
-            else if (c == ':') state = ST_COLON;
-            else if (c == ';') state = ST_SEMICOLON;
+            else if (c == '*') {foundToken = true; token.type = TKN_TIMES;}
+            else if (c == ',') {foundToken = true; token.type = TKN_COMMA;}
+            else if (c == ':') {foundToken = true; token.type = TKN_COLON;}
+            else if (c == ';') {foundToken = true; token.type = TKN_SEMICOLON;}
             else if (c == '!') state = ST_NOT;
             else if (c == '=') state = ST_EQUAL_SIGN;
             else if (c == '>') state = ST_GREATER;
             else if (c == '<') state = ST_LESS;
             else if (('A' <= c && c <= 'Z')||('a' <= c && c <= 'z')) state = ST_ID;
             else if (c == '_') state = ST_EXT_UNDERSCORE;
-            else if (c == ')') state = ST_CLOSING_PARENTHESES;
+            else if (c == ')') {foundToken = true; token.type = TKN_CLOSING_PARENTHESES;}
             else if (c == '(') state = ST_OPENING_PARENTHESES;
+            else if (c == '|') {foundToken = true; token.type = TKN_EXT_VERTICAL_LINE;}
             else if (c == '"') {
                 state = ST_OPENING_QUOTATION_MARK;
                 string.length = 0;
                 string.str[0] = '\0';
             }
             else if (c == '@') state = ST_AT_MAIN;
-            else if (c == '10' && !inParentheses) {
-                token.type = TKN_NEWLINE;
-                lastTokenNL = true;
-                free(string.str);
-                return token;
+            else if (c == '10') {
+                if(!inParentheses){
+                    token.type = TKN_NEWLINE;
+                    foundToken = true;
+                }
+                state = ST_INDENTATION;
             }
-            else if (c <= 127) break; //zbylé ASCII ingoruji
+            else if (c <= 127) break; //ignoring remaining ASCII symbols
             break;
-        case ST_EOF:
+        case ST_EOF: //TODO - rovnou tam kde to může být
             token.type = TKN_EOF;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
+            foundToken = true;
+            //state se už nemění
+            //ungetc není potřeba
         case ST_AT_MAIN:
             if (getc(stream) == 'm' &&
                 getc(stream) == 'a' &&
                 getc(stream) == 'i' &&
                 getc(stream) == 'n'){
                     token.type = TKN_AT_MAIN;
-                    lastTokenNL = false;
-                    free(string.str);
-                    return token;
+                    state = ST_START;
+                    foundToken = true;
                 }
             else state = ST_LEX_ERROR_1;
             break;
-        case ST_INDENTATION:
+        case ST_INDENTATION: //TODO add dedentation
             unsigned spaces = 0;
-            if(c = getc(stream) == 9) { //(tabulátor na začátku neprázdného řádku je lexikální chyba 1
+            if(c = getc(stream) == 9) { //tabulátor na začátku neprázdného řádku je lexikální chyba 1
                 while (0 <= (c = getc(stream)) && c <= 32 || c == 127) {;}
                 if(c != 10){
                     state = ST_LEX_ERROR_1;
                     break;
                 }
                 token.type = TKN_NEWLINE;
-                lastTokenNL = true;
-                free(string.str);
-                return token;                    
+                state = ST_START; //TODO fact check
+                foundToken = true;
             }
             if (c < 0 || 127 < c) { //MIMO ASCII
                 state = ST_LEX_ERROR_1;
@@ -102,10 +107,9 @@ token_t getToken(FILE* stream) {
             } 
             ungetc(c, stream);
             token.type = TKN_INDENTATION;
-            token.intValue = (int)spaces;
-            lastTokenNL = false;
-            free(string.str);
-            return token; //i nula
+            token.intValue = (int)spaces; //i nula
+            state = ST_START;
+            foundToken = true;
             break;
         case ST_ZERO_BEGINNING:      
             if (c == '0') break; //stays in this state, string stays at 0
@@ -124,9 +128,8 @@ token_t getToken(FILE* stream) {
             else {
                 token.type = TKN_INT;
                 token.intValue = 0;
-                lastTokenNL = false;
-                free(string.str);
-                return token; //0
+                state = ST_START;
+                foundToken = true;
             }
             break;
         case ST_ZB_UNDERSCORE:
@@ -146,9 +149,9 @@ token_t getToken(FILE* stream) {
             }    
             else {
                 token.type = TKN_INT;
-                lastTokenNL = false;
-                free(string.str);
-                return token;
+                ungetc(c, stream);
+                state = ST_START;
+                foundToken = true;
             }
             break;
         case ST_NZB_UNDERSCORE:
@@ -176,9 +179,9 @@ token_t getToken(FILE* stream) {
             else {
                 token.type = TKN_DOUBLE;
                 //token.doubleValue = string TODO
-                lastTokenNL = false;
-                free(string.str);
-                return token;
+                ungetc(c, stream);
+                state = ST_START;
+                foundToken = true;
             }
             break;
         case ST_DP_UNDERSCORE:
@@ -232,9 +235,9 @@ token_t getToken(FILE* stream) {
             else {
                 token.type = TKN_DOUBLE;
                 //token.doubleValue = string TODO
-                lastTokenNL = false;
-                free(string.str);
-                return token;
+                ungetc(c, stream);
+                state = ST_START;
+                foundToken = true;
             }
             break;
         case ST_EXP_UNDERSCORE:
@@ -247,107 +250,47 @@ token_t getToken(FILE* stream) {
         case ST_DOUBLE_SUFIX:
             token.type = TKN_DOUBLE;
             //token.doubleValue = string TODO
-            lastTokenNL = false;
-            free(string.str);
-            return token;
-        case ST_MINUS:
-            token.type = TKN_MINUS;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
-        case ST_PLUS:
-            token.type = TKN_PLUS;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
+            ungetc(c, stream);
+            state = ST_START;
+            foundToken = true;
         case ST_DIVISION_SLASH:
             if (c == '*') state = ST_OPENING_BLOCK_COMMENT;
             else if (c == '/') state = ST_DOUBLE_SLASH_COMMENT;
             else {
                 token.type = TKN_DIVISION_SLASH;
-                lastTokenNL = false;
-                free(string.str);
-                return token;
+                ungetc(c, stream);
+                state = ST_START;
+                foundToken = true;
             }
             break;
-        case ST_TIMES:
-            token.type = TKN_TIMES;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
-        case ST_COMMA:
-            token.type = TKN_COMMA;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
-        case ST_COLON:
-            token.type = TKN_COLON;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
-        case ST_SEMICOLON:
-            token.type = TKN_SEMICOLON;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
         case ST_LESS:
-            if (c == '=') state = ST_LESS_EQUAL;
-            else if (c == '-') state = ST_EXT_LESS_MINUS;
+            if (c == '=') {foundToken = true; token.type = TKN_LESS_EQUAL;}
+            else if (c == '-') {foundToken = true; token.type = TKN_EXT_LESS_MINUS;}
             else {
                 token.type = TKN_LESS;
-                lastTokenNL = false;
-                free(string.str);
-                return token;
+                ungetc(c, stream);
+                state = ST_START;
+                foundToken = true;
             }
             break;
-        case ST_LESS_EQUAL:
-            token.type = TKN_LESS_EQUAL;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
-        case ST_EXT_LESS_MINUS:
-            token.type = TKN_EXT_LESS_MINUS;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
         case ST_GREATER:
-            if (c == '=') state = ST_GREATER_EQUAL;
+            if (c == '=') {foundToken = true; token.type = TKN_GREATER_EQUAL;}
             else {
                 token.type = TKN_GREATER;
-                lastTokenNL = false;
-                free(string.str);
-                return token;
+                foundToken = true;
+                ungetc(c, stream);
+                state = ST_START;
             }
             break;
-        case ST_GREATER_EQUAL:
-            token.type = TKN_GREATER_EQUAL;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
         case ST_EQUAL_SIGN:
-            if (c == '=') state = ST_DOUBLE_EQUAL_SIGN;
-            else if (c == '>') state = ST_EXT_EQUAL_GREATER;
+            if (c == '=') {foundToken = true; token.type = TKN_EQUAL;}
+            else if (c == '>') {foundToken = true; token.type = TKN_EXT_EQUAL_GREATER;}
             else state = ST_LEX_ERROR_1;
             break;
-        case ST_DOUBLE_EQUAL_SIGN:
-            token.type = TKN_EQUAL;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
-        case ST_EXT_EQUAL_GREATER:
-            token.type = TKN_EXT_EQUAL_GREATER;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
         case ST_NOT:
-            if (c == '=') state = ST_NOT_EQUAL;
+            if (c == '=') {foundToken = true; token.type = TKN_NOT_EQUAL;} //TODO add state = ststart
             else state = ST_LEX_ERROR_1;
             break;
-        case ST_NOT_EQUAL:
-            token.type = TKN_NOT_EQUAL;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
         case ST_OPENING_BLOCK_COMMENT: //řeší i jiné stavy z FSM
             unsigned depthCount = 1;
             bool asNewLine = false;
@@ -379,19 +322,13 @@ token_t getToken(FILE* stream) {
                     }
                 }
                 token.type = TKN_NEWLINE;
-                lastTokenNL = true;
-                free(string.str);
-                return token;
+                foundToken = true;
+                state = ST_INDENTATION;
             } 
             break;        
         case ST_DOUBLE_SLASH_COMMENT:
             if (c == '10') state = ST_INDENTATION; //komentář jako LF 
             break;
-        case ST_EXT_VERTICAL_LINE:
-            token.type = TKN_EXT_VERTICAL_LINE;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
         case ST_EXT_UNDERSCORE:
             if (c == '_') {
                 state = ST_ID_UNDERSCORES;
@@ -399,9 +336,9 @@ token_t getToken(FILE* stream) {
             }
             else {
                 token.type = TKN_EXT_UNDERSCORE;
-                lastTokenNL = false;
-                free(string.str);
-                return token;
+                foundToken = true;
+                state = ST_START;
+                ungetc(c, stream);
             }
             break;
         case ST_ID_UNDERSCORES:
@@ -421,7 +358,7 @@ token_t getToken(FILE* stream) {
             } else {
                 token.type = TKN_ID;
                 token.string = string.str;
-                lastTokenNL = false;
+                foundToken = true;
                 if (c == '.') {
                     if( string.length == 5 &&
                         string.str[0] == 'i' &&
@@ -430,11 +367,11 @@ token_t getToken(FILE* stream) {
                         string.str[3] == '2' &&
                         string.str[4] == '6' &&
                         (c = getc(stream)) == '*'){ 
-                            lastTokenNL = false;
                             token.type = TKN_IFJ26dot_asterisk;
-                            free(string.str);
-                            return token;
-                    } else {
+                            foundToken = true;
+                            state = ST_START;
+                            break;
+                    } else { //TODO extensions?
                         state = ST_LEX_ERROR_1;
                         break;
                     }
@@ -492,7 +429,7 @@ token_t getToken(FILE* stream) {
                             break;
                         case 'S': // String
                             if (string.length == 6 && STR_CMP(1, 't') && STR_CMP(2, 'r') && STR_CMP(3, 'i') && STR_CMP(4, 'n') && STR_CMP(5, 'g'))
-                                token.type = TKN_STRING;
+                                token.type = TKN_STRING_KEYWORD;
                             break;
                         case 't': // then, type
                             if (string.length == 4){
@@ -522,29 +459,23 @@ token_t getToken(FILE* stream) {
             }
             if (token.type != TKN_ID)
                 free(string.str);
-            return token; //free povinnost pro identifikátory se předává
+            foundToken = true;
+            state = ST_START;
         case ST_OPENING_PARENTHESES: //LF BEHAVES AS A WHITESPACE IN PARENTHESES
             inParentheses = true;
-            if (c == ')') state = ST_UNIT;
+            if (c == ')') {
+                inParentheses = false;
+                token.type = TKN_UNIT;
+                foundToken = true;
+                state = ST_START;
+            }
             else {
                 token.type = TKN_OPENING_PARENTHESES;
-                lastTokenNL = false;
-                free(string.str);
-                return token;
+                foundToken = true;
+                state = ST_START;
+                ungetc(c, stream);
             }
             break;
-        case ST_CLOSING_PARENTHESES:
-            inParentheses = false;
-            token.type = TKN_CLOSING_PARENTHESES;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
-        case ST_UNIT:
-            inParentheses = false;
-            token.type = TKN_UNIT;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
         case ST_OPENING_QUOTATION_MARK:
             if(c == '"') state = ST_TWO_QUOTATION_MARKS;
             else if (c == '\\') {
@@ -563,12 +494,12 @@ token_t getToken(FILE* stream) {
             break;
         case ST_TWO_QUOTATION_MARKS:
             if (c == '"') state = ST_MULTILINE_STRING;
-            else {
+            else { //empty string
                 token.type = TKN_STRING;
                 token.string = "\0";
-                lastTokenNL = false;
-                free(string.str);
-                return token; //empty string
+                foundToken = true;
+                state = ST_START;
+                ungetc(c, stream);
             }
             break;
         case ST_MULTILINE_STRING:
@@ -582,22 +513,20 @@ token_t getToken(FILE* stream) {
             break;
         case ST_SECOND_CLOSING_QUATATION_MARK_IN_A_MULTILINE_STRING:
             if (c == '"') {
-                state = ST_ENDING_A_MULTILINE_STRING;
                 string.length = string.length - 3;
                 string.str[string.length] = '\0';
+                token.type = TKN_MULTILINE_STRING;
+                token.string = string.str;
+                foundToken = true;
+                state = ST_START; //TODO check
             }
             else {
                 state = ST_MULTILINE_STRING;
                 stringAppend(&string, c);
             }
             break;
-        case ST_ENDING_A_MULTILINE_STRING:
-            token.type = TKN_MULTILINE_STRING;
-            token.string = string.str;
-            lastTokenNL = false;
-            return token; //free povinnost se předává
         case ST_IN_STRING:
-            if (c == '"') state = ST_ENDING_STRING;
+            if (c == '"') {foundToken = true; token.type = TKN_STRING;}
             else if (c == '\\') {
                 state = ST_IN_ESC_SEQ;
                 stringAppend(&string, c);
@@ -612,17 +541,12 @@ token_t getToken(FILE* stream) {
             if (c == '"' || c == '\\' || c == 'n' || c == 'r' || c == 't') state = ST_IN_STRING;
             else state = ST_LEX_ERROR_1;
             break;
-        case ST_ENDING_STRING:
-            token.type = TKN_STRING;
-            lastTokenNL = false;
-            return token; //free povinnost se předává
         case ST_LEX_ERROR_1:
             //TODO
             abort();
         }
     }
-    token.type = TKN_EOF;
-    free(string.str);
-    lastTokenNL = false;
+    if(token.type != TKN_ID && token.type != TKN_STRING && token.type != TKN_MULTILINE_STRING)
+        free(string.str);
     return token;
 }
