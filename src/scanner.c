@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #define STR_CMP(i, c) (string.str[i] == (c))
+#define EOF_AND_OUT_OF_ASCII_CHECK if (c == EOF) {foundToken = true; token.type = TKN_EOF; break;}  else if (c < 0 || 127 < c) {free(string.str); exit(1);} //LEX ERR 1 //MIMO ASCII KROMĚ EOF
 
 token_t getToken(FILE* stream) {
     bool foundToken = false;
@@ -16,15 +17,13 @@ token_t getToken(FILE* stream) {
     string_t string = {.capacity = STRING_STARTING_CAPACITY, .length = 0, .str = NULL};
     string.str = (char*)malloc(STRING_STARTING_CAPACITY);
     if (string.str == NULL);
-        abort(); //TODO vnitřní err
+        exit(-1); //TODO vnitřní err
     bool inParentheses = false; //NL v závorkách se chová jako obyčejný whitespace
     int c;
     while (!foundToken) 
     {
         c = getc(stream);
-        if(c == EOF)
-            state = ST_EOF;
-        if (c < 0 || 127 < c) {free(string.str); exit(1);} //LEX ERR 1 //MIMO ASCII
+        EOF_AND_OUT_OF_ASCII_CHECK
         switch (state) //https://share.gemini.google/zIizBiReNRVX
         {
         case ST_EOF:
@@ -61,40 +60,36 @@ token_t getToken(FILE* stream) {
                 string.length = 0;
                 string.str[0] = '\0';
             }
-            else if (c == '@') state = ST_AT_MAIN;
+            else if (c == '@')
+                if (getc(stream) == 'm' &&
+                    getc(stream) == 'a' &&
+                    getc(stream) == 'i' &&
+                    getc(stream) == 'n'){
+                        token.type = TKN_AT_MAIN;
+                        state = ST_START;
+                        foundToken = true;
+                    } else {free(string.str); exit(1);} //LEX ERR 1 
             else if (c == '10') {
                 if(!inParentheses){
                     token.type = TKN_NEWLINE;
                     foundToken = true;
                 }
                 state = ST_INDENTATION;
-            }
-            else if (c <= 127) break; //ignoring remaining ASCII symbols
-            break;
-        case ST_AT_MAIN:
-            if (getc(stream) == 'm' &&
-                getc(stream) == 'a' &&
-                getc(stream) == 'i' &&
-                getc(stream) == 'n'){
-                    token.type = TKN_AT_MAIN;
-                    state = ST_START;
-                    foundToken = true;
-                }
-            else {free(string.str); exit(1);} //LEX ERR 1 
+            } //ignoring the rest of ASCII symbols
             break;
         case ST_INDENTATION: //TODO add dedentation
             unsigned spaces = 0;
             if(c == 9) { //tabulátor na začátku neprázdného řádku je lexikální chyba 1
                 while (0 <= (c = getc(stream)) && c <= 32 || c == 127) {;} // ignoring whitespaces
-                if (c == EOF) {foundToken = true; token.type = TKN_EOF; break;}
+                EOF_AND_OUT_OF_ASCII_CHECK
                 if (c != 10) {free(string.str); exit(1);} //LEX ERR 1
                 token.type = TKN_NEWLINE;
                 state = ST_INDENTATION; //redundant
                 foundToken = true;
+                break;
             }
-            if (c < 0 || 127 < c) {free(string.str); exit(1);} //LEX ERR 1
             while ((c = getc(stream)) == ' ') spaces++;
-            if (c < 0 || 127 < c) {free(string.str); exit(1);} //LEX ERR 1
+            EOF_AND_OUT_OF_ASCII_CHECK
             ungetc(c, stream);
             if (spaces != lastIndentation){
                 token.type = (spaces > lastIndentation ? TKN_INDENTATION : TKN_DEDENTATION);
@@ -287,28 +282,36 @@ token_t getToken(FILE* stream) {
             bool asNewLine = false;
             while (depthCount) {
                 c = getc(stream);
-                if (c == '10') asNewLine = true;
-                else if (c == '/')
+                if (c == EOF || c < 0 || 127 < c) {free(string.str); exit(1);}
+                else if (c == '10') asNewLine = true;
+                else if (c == '/') {
+                slash:
                     if ((c = getc(stream)) == '*')
                         depthCount++;
                     else if (c == '10') asNewLine = true; 
-                else if (c == '*')
+                    else if (c == '/') goto slash;
+                    else if (c == EOF || c < 0 || 127 < c) {free(string.str); exit(1);}
+                }
+                else if (c == '*'){
+                asterisk:
                     if ((c = getc(stream)) == '/')
                         depthCount--;
                     else if (c == '10') asNewLine = true;
-                else if (c < 0 || 127 < c) {free(string.str); exit(1);} //LEX ERR 1 //MIMO ASCII
-            }
-            if(asNewLine){
-                while ((c = getc(stream)) != 10 /*nl*/){
-                    if(c == EOF){
-                        state = ST_EOF;
-                        break;
-                    }
-                    if(c < 0 || 32 < c && c != 127) {free(string.str); exit(1);} //LEX ERR 1 
+                    else if (c == '*') goto asterisk;
+                    else if (depthCount && c == EOF || c < 0 || 127 < c) {free(string.str); exit(1);}
                 }
-                token.type = TKN_NEWLINE;
-                foundToken = true;
-                state = ST_INDENTATION;
+            }
+            if (c == EOF) {foundToken = true; token.type = TKN_EOF; break;}
+            if(asNewLine){
+                while (true){
+                    c = getc(stream);
+                    EOF_AND_OUT_OF_ASCII_CHECK
+                    else if (c == '10') {
+                        token.type = TKN_NEWLINE;
+                        foundToken = true;
+                        state = ST_INDENTATION;
+                    } else if (32 < c && c < 127) {free(string.str); exit(1);} //LEX ERR 1 
+                }
             } 
             break;        
         case ST_DOUBLE_SLASH_COMMENT:
@@ -359,7 +362,7 @@ token_t getToken(FILE* stream) {
                     } else {free(string.str); exit(1);} //LEX ERR 1  //TODO extensions?
                 }
                 ungetc(c, stream);
-                switch (string.length)
+                switch (string.length) //TODO SHORTEN, makro pro found state type a funkce pro cmp
                 {
                     case 2: //if, do
                         if (STR_CMP(0, 'i') && STR_CMP(1, 'f')) {foundToken = true; state = ST_START; token.type = TKN_IF;}
