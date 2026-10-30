@@ -5,8 +5,11 @@
 #include "scanner.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define STR_CMP(i, c) (string.str[i] == (c))
+#define TOKEN_FOUND_RETURN_TO_START(tkn) {foundToken = true; state = ST_START; token.type = tkn;}
+#define COMPARE_WITH_KEYWORD(keyword, tkn) if(!strcmp(string.str, #keyword)) TOKEN_FOUND_RETURN_TO_START(tkn) 
 #define EOF_AND_OUT_OF_ASCII_CHECK if (c == EOF) {foundToken = true; token.type = TKN_EOF; break;}  else if (c < 0 || 127 < c) {free(string.str); exit(1);} //LEX ERR 1 //MIMO ASCII KROMĚ EOF
 
 token_t getToken(FILE* stream) {
@@ -365,40 +368,39 @@ token_t getToken(FILE* stream) {
                 switch (string.length) //TODO SHORTEN, makro pro found state type a funkce pro cmp
                 {
                     case 2: //if, do
-                        if (STR_CMP(0, 'i') && STR_CMP(1, 'f')) {foundToken = true; state = ST_START; token.type = TKN_IF;}
-                        else if (STR_CMP(0, 'd') && STR_CMP(1, 'o')) {foundToken = true; state = ST_START; token.type = TKN_DO;}
+                        COMPARE_WITH_KEYWORD(if, TKN_IF)
+                        else COMPARE_WITH_KEYWORD(do, TKN_DO)
                         break;
                     case 3: //val, var, for, def, Int
-                        if (STR_CMP(0, 'a') && STR_CMP(1, 'a')) {
-                            if (STR_CMP(2, 'r')) {foundToken = true; state = ST_START; token.type = TKN_VAR;}
-                            else if (STR_CMP(2, 'l')) {foundToken = true; state = ST_START; token.type = TKN_VAL;} }
-                        else if (STR_CMP(0, 'f') && STR_CMP(1, 'o') && STR_CMP(2, 'r')) {foundToken = true; state = ST_START; token.type = TKN_EXT_FOR;}
-                        else if (STR_CMP(0, 'd') && STR_CMP(1, 'e') && STR_CMP(2, 'f')) {foundToken = true; state = ST_START; token.type = TKN_DEF;}
-                        else if (STR_CMP(0, 'I') && STR_CMP(1, 'n') && STR_CMP(2, 't')) {foundToken = true; state = ST_START; token.type = TKN_INT;}
+                        if (STR_CMP(0, 'v') && STR_CMP(1, 'a')) {
+                            if (STR_CMP(2, 'r')) TOKEN_FOUND_RETURN_TO_START(TKN_VAR)
+                            else if (STR_CMP(2, 'l')) TOKEN_FOUND_RETURN_TO_START(TKN_VAL) 
+                        }
+                        else COMPARE_WITH_KEYWORD(for, TKN_EXT_FOR)
+                        else COMPARE_WITH_KEYWORD(def, TKN_DEF)
+                        else COMPARE_WITH_KEYWORD(Int, TKN_INT)
                         break;
                     case 4: //else, then, Unit, type, case, List
-                        if (STR_CMP(0, 'e') && STR_CMP(1, 'l') && STR_CMP(2, 's') && STR_CMP(3, 'e')) {foundToken = true; state = ST_START; token.type = TKN_ELSE;}
-                        else if (STR_CMP(0, 't') && STR_CMP(1, 'h') && STR_CMP(2, 'e') && STR_CMP(3, 'n')) {foundToken = true; state = ST_START; token.type = TKN_THEN;}
-                        else if (STR_CMP(0, 'U') && STR_CMP(1, 'n') && STR_CMP(2, 'i') && STR_CMP(3, 't')) {foundToken = true; state = ST_START; token.type = TKN_UNIT;}
-                        else if (STR_CMP(0, 't') && STR_CMP(1, 'y') && STR_CMP(2, 'p') && STR_CMP(3, 'e')) {foundToken = true; state = ST_START; token.type = TKN_EXT_TYPE;}
-                        else if (STR_CMP(0, 'c') && STR_CMP(1, 'a') && STR_CMP(2, 's') && STR_CMP(3, 'e')) {foundToken = true; state = ST_START; token.type = TKN_EXT_CASE;}
-                        else if (STR_CMP(0, 'L') && STR_CMP(1, 'i') && STR_CMP(2, 's') && STR_CMP(3, 't')) {foundToken = true; state = ST_START; token.type = TKN_EXT_LIST;}
+                        COMPARE_WITH_KEYWORD(else, TKN_ELSE)
+                        else COMPARE_WITH_KEYWORD(then, TKN_THEN)
+                        else COMPARE_WITH_KEYWORD(Unit, TKN_UNIT)
+                        else COMPARE_WITH_KEYWORD(type, TKN_EXT_TYPE)
+                        else COMPARE_WITH_KEYWORD(case, TKN_EXT_CASE)
+                        else COMPARE_WITH_KEYWORD(List, TKN_EXT_LIST)
                         break;
                     case 5: //while, class, match
-                        if (STR_CMP(0, 'w') && STR_CMP(1, 'h') && STR_CMP(2, 'i') && STR_CMP(3, 'l') && STR_CMP(4, 'e')) {foundToken = true; state = ST_START; token.type = TKN_WHILE;}
-                        else if (STR_CMP(0, 'c') && STR_CMP(1, 'l') && STR_CMP(2, 'a') && STR_CMP(3, 's') && STR_CMP(4, 's')) {foundToken = true; state = ST_START; token.type = TKN_EXT_CLASS;}
-                        else if (STR_CMP(0, 'm') && STR_CMP(1, 'a') && STR_CMP(2, 't') && STR_CMP(3, 'c') && STR_CMP(4, 'h')) {foundToken = true; state = ST_START; token.type = TKN_EXT_MATCH;}
+                        COMPARE_WITH_KEYWORD(while, TKN_WHILE)
+                        else COMPARE_WITH_KEYWORD(class, TKN_EXT_CLASS)
+                        else COMPARE_WITH_KEYWORD(match, TKN_EXT_MATCH)
                         break;
                     case 6: //return, Double, import, String
-                        if (STR_CMP(0, 'r') && STR_CMP(1, 'e') && STR_CMP(2, 't') && STR_CMP(3, 'u') && STR_CMP(4, 'r') && STR_CMP(5, 'n')) {foundToken = true; state = ST_START; token.type = TKN_RETURN;}
-                        else if (STR_CMP(0, 'D') && STR_CMP(1, 'o') && STR_CMP(2, 'u') && STR_CMP(3, 'b') && STR_CMP(4, 'l') && STR_CMP(5, 'e')) {foundToken = true; state = ST_START; token.type = TKN_DOUBLE;}
-                        else if (STR_CMP(0, 'i') && STR_CMP(1, 'm') && STR_CMP(2, 'p') && STR_CMP(3, 'o') && STR_CMP(4, 'r') && STR_CMP(5, 't')) {foundToken = true; state = ST_START; token.type = TKN_IMPORT;}
-                        else if (STR_CMP(0, 'S') && STR_CMP(1, 't') && STR_CMP(2, 'r') && STR_CMP(3, 'i') && STR_CMP(4, 'n') && STR_CMP(5, 'g')) {foundToken = true; state = ST_START; token.type = TKN_STRING;}
+                        COMPARE_WITH_KEYWORD(return, TKN_RETURN)
+                        else COMPARE_WITH_KEYWORD(Double, TKN_DOUBLE)
+                        else COMPARE_WITH_KEYWORD(import, TKN_IMPORT)
+                        else COMPARE_WITH_KEYWORD(String, TKN_STRING)
                         break;
                     case 9: //extension
-                        if (STR_CMP(0, 'e') && STR_CMP(1, 'x') && STR_CMP(2, 't') && STR_CMP(3, 'e') && STR_CMP(4, 'n') && STR_CMP(5, 's') && STR_CMP(6, 'i') && STR_CMP(7, 'o') && STR_CMP(8, 'n')){
-                            foundToken = true; state = ST_START; token.type = TKN_EXT_EXTENSION;
-                        }
+                        COMPARE_WITH_KEYWORD(extension, TKN_EXT_EXTENSION)
                         break;
                 }
             }
