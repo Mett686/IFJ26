@@ -358,6 +358,7 @@ token_t getToken(FILE* stream) {
                             break;
                     } else {free(string.str); exit(1);} //LEX ERR 1  //TODO extensions?
                 }
+                ungetc(c, stream);
                 switch (string.length)
                 {
                     case 2: //if, do
@@ -476,6 +477,7 @@ token_t getToken(FILE* stream) {
             if (c == '"' || c == '\\' || c == 'n' || c == 'r' || c == 't') state = ST_IN_STRING;
             else {free(string.str); exit(1);} //LEX ERR 1 
             break;
+        }
     }
     if(token.type != TKN_ID && token.type != TKN_STRING && token.type != TKN_MULTILINE_STRING)
         free(string.str);
