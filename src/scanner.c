@@ -7,32 +7,46 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define DEBUG 1
 #define STR_CMP(i, c) (string.str[i] == (c))
 #define TOKEN_FOUND_RETURN_TO_START(tkn) {foundToken = true; state = ST_START; token.type = tkn;}
 #define COMPARE_WITH_KEYWORD(keyword, tkn) if(!strcmp(string.str, #keyword)) TOKEN_FOUND_RETURN_TO_START(tkn) 
 #define EOF_AND_OUT_OF_ASCII_CHECK if (c == EOF) {foundToken = true; token.type = TKN_EOF; break;}  else if (c < 0 || 127 < c) {free(string.str); exit(1);} //LEX ERR 1 //MIMO ASCII KROMĚ EOF
 
+indentation_stack_t indentationStack = {.top = 0, .capacity = (unsigned)STACK_STARTING_CAPACITY, .stack = NULL};
+
 token_t getToken(FILE* stream) {
     bool foundToken = false;
-    static enum EState state = ST_START;
-    static unsigned lastIndentation = 0;
+    static EState state = ST_START;
     token_t token = {.type = TKN_NONE};
-    string_t string = {.capacity = STRING_STARTING_CAPACITY, .length = 0, .str = NULL};
+    if(indentationStack.stack == NULL){
+        indentationStack.stack = (unsigned*)malloc(STACK_STARTING_CAPACITY);
+        if(indentationStack.stack == NULL)
+            exit(-1);
+        indentationStack.stack[0] = 0;
+    }
+    static unsigned toDedent = 0;
+    string_t string = {.capacity = (unsigned)STRING_STARTING_CAPACITY, .length = 0, .str = NULL};
     string.str = (char*)malloc(STRING_STARTING_CAPACITY);
-    if (string.str == NULL);
+    if (string.str == NULL)
         exit(-1); //TODO vnitřní err
     bool inParentheses = false; //NL v závorkách se chová jako obyčejný whitespace
     int c;
     while (!foundToken) 
     {
+        if(toDedent){
+            token.type = TKN_DEDENTATION;
+            toDedent--;
+            foundToken = true;
+            break;
+        }
         c = getc(stream);
+#ifdef DEBUG
+        printf("char: '%c',\t state: %d,\t %s\n", c, state, string.str);
+#endif
         EOF_AND_OUT_OF_ASCII_CHECK
         switch (state) //https://share.gemini.google/zIizBiReNRVX
         {
-        case ST_EOF:
-            token.type = TKN_EOF;
-            foundToken = true;
-            break;
         case ST_START:
             string.str[0] = c;
             string.str[1] = '\0';
@@ -42,28 +56,29 @@ token_t getToken(FILE* stream) {
                 token.intValue = (c - '0');
                 state = ST_NONZERO_BEGINNING;
             }
-            else if (c == '-') {foundToken = true; state = ST_START; token.type = TKN_MINUS;}
-            else if (c == '+') {foundToken = true; state = ST_START; token.type = TKN_PLUS;}
+            else if (c == '-') {foundToken = true; token.type = TKN_MINUS;}
+            else if (c == '+') {foundToken = true; token.type = TKN_PLUS;}
             else if (c == '/') state = ST_DIVISION_SLASH;
-            else if (c == '*') {foundToken = true; state = ST_START; token.type = TKN_TIMES;}
-            else if (c == ',') {foundToken = true; state = ST_START; token.type = TKN_COMMA;}
-            else if (c == ':') {foundToken = true; state = ST_START; token.type = TKN_COLON;}
-            else if (c == ';') {foundToken = true; state = ST_START; token.type = TKN_SEMICOLON;}
+            else if (c == '*') {foundToken = true; token.type = TKN_TIMES;}
+            else if (c == ',') {foundToken = true; token.type = TKN_COMMA;}
+            else if (c == ':') {foundToken = true; token.type = TKN_COLON;}
+            else if (c == ';') {foundToken = true; token.type = TKN_SEMICOLON;}
             else if (c == '!') state = ST_NOT;
             else if (c == '=') state = ST_EQUAL_SIGN;
             else if (c == '>') state = ST_GREATER;
             else if (c == '<') state = ST_LESS;
             else if (('A' <= c && c <= 'Z')||('a' <= c && c <= 'z')) state = ST_ID;
             else if (c == '_') state = ST_EXT_UNDERSCORE;
-            else if (c == ')') {foundToken = true; state = ST_START; token.type = TKN_CLOSING_PARENTHESES;}
-            else if (c == '(') state = ST_OPENING_PARENTHESES;
-            else if (c == '|') {foundToken = true; state = ST_START; token.type = TKN_EXT_VERTICAL_LINE;}
+            else if (c == ')') {foundToken = true; token.type = TKN_CLOSING_PARENTHESES; inParentheses = false;}
+            else if (c == '(') {foundToken = true; token.type = TKN_OPENING_PARENTHESES; inParentheses = true;}
+            else if (c == '|') {foundToken = true; token.type = TKN_EXT_VERTICAL_LINE;}
             else if (c == '"') {
                 state = ST_OPENING_QUOTATION_MARK;
                 string.length = 0;
                 string.str[0] = '\0';
             }
-            else if (c == '@')
+            else if (c == '@'){
+                printf("add\n");
                 if (getc(stream) == 'm' &&
                     getc(stream) == 'a' &&
                     getc(stream) == 'i' &&
@@ -72,7 +87,7 @@ token_t getToken(FILE* stream) {
                         state = ST_START;
                         foundToken = true;
                     } else {free(string.str); exit(1);} //LEX ERR 1 
-            else if (c == '10') {
+                } else if (c == 10) {
                 if(!inParentheses){
                     token.type = TKN_NEWLINE;
                     foundToken = true;
@@ -80,25 +95,45 @@ token_t getToken(FILE* stream) {
                 state = ST_INDENTATION;
             } //ignoring the rest of ASCII symbols
             break;
-        case ST_INDENTATION: //TODO add dedentation
+        case ST_INDENTATION:
             unsigned spaces = 0;
             if(c == 9) { //tabulátor na začátku neprázdného řádku je lexikální chyba 1
-                while (0 <= (c = getc(stream)) && c <= 32 || c == 127) {;} // ignoring whitespaces
+                while ((0 <= (c = getc(stream)) && c <= 32) || c == 127) {;} // ignoring whitespaces
                 EOF_AND_OUT_OF_ASCII_CHECK
                 if (c != 10) {free(string.str); exit(1);} //LEX ERR 1
-                token.type = TKN_NEWLINE;
-                state = ST_INDENTATION; //redundant
+                token.type = TKN_NEWLINE; //TODO spíš ignor?
                 foundToken = true;
                 break;
             }
-            while ((c = getc(stream)) == ' ') spaces++;
-            EOF_AND_OUT_OF_ASCII_CHECK
-            ungetc(c, stream);
-            if (spaces != lastIndentation){
-                token.type = (spaces > lastIndentation ? TKN_INDENTATION : TKN_DEDENTATION);
-                foundToken = true;
-                state = ST_START;
+            while (c == ' '){
+                spaces++; 
+                c = getc(stream);
             }
+            EOF_AND_OUT_OF_ASCII_CHECK
+            if (c == 10){
+                token.type = TKN_NEWLINE;
+                foundToken = true;
+                state = ST_INDENTATION;
+                break;
+            }
+            ungetc(c, stream);
+            state = ST_START;
+
+            if (spaces != indentationStack.stack[indentationStack.top]){
+                if (spaces > indentationStack.stack[indentationStack.top]){
+                    push(&indentationStack, spaces);
+                    token.type = TKN_INDENTATION;
+                    foundToken = true;
+                } else {
+                    while (indentationStack.stack[indentationStack.top] > spaces){
+                        indentationStack.top--;
+                        toDedent++;
+                    }
+                    if (indentationStack.stack[indentationStack.top] != spaces)
+                        exit(1);
+                }
+            }
+            state = ST_START;
             break;
         case ST_ZERO_BEGINNING:      
             if (c == '0') break; //stays in this state, string stays at 0
@@ -167,7 +202,7 @@ token_t getToken(FILE* stream) {
             else if (c == 'd' || c == 'D') state = ST_DOUBLE_SUFIX;
             else {
                 token.type = TKN_DOUBLE;
-                //token.doubleValue = string TODO
+                token.doubleValue = strtod(string.str, NULL);
                 ungetc(c, stream);
                 state = ST_START;
                 foundToken = true;
@@ -220,10 +255,10 @@ token_t getToken(FILE* stream) {
                 break; //stays
             }
             else if (c == '_') state = ST_EXP_UNDERSCORE;
-            else if (c == 'd', c == 'D') state = ST_DOUBLE_SUFIX;
+            else if (c == 'd' || c == 'D') state = ST_DOUBLE_SUFIX;
             else {
                 token.type = TKN_DOUBLE;
-                //token.doubleValue = string TODO
+                token.doubleValue = strtod(string.str, NULL);
                 ungetc(c, stream);
                 state = ST_START;
                 foundToken = true;
@@ -236,15 +271,28 @@ token_t getToken(FILE* stream) {
             }
             else {free(string.str); exit(1);} //LEX ERR 1 
             break;
-        case ST_DOUBLE_SUFIX:
+        case ST_DOUBLE_SUFIX: //TODO remove sufixes
             token.type = TKN_DOUBLE;
-            //token.doubleValue = string TODO
+            token.doubleValue = strtod(string.str, NULL);
             ungetc(c, stream);
             state = ST_START;
             foundToken = true;
+            break;
         case ST_DIVISION_SLASH:
             if (c == '*') state = ST_OPENING_BLOCK_COMMENT;
-            else if (c == '/') state = ST_DOUBLE_SLASH_COMMENT;
+            else if (c == '/') {
+                state = ST_INDENTATION;
+                while ((c=getc(stream)) != 10 && c != EOF) {;}
+                foundToken = true;
+                if(c == 10){
+                    token.type = TKN_NEWLINE;
+                    state = ST_INDENTATION;
+                } else if (c == EOF){
+                    token.type = TKN_EOF;
+                    state = ST_START;
+                }
+                break;
+            }
             else {
                 token.type = TKN_DIVISION_SLASH;
                 ungetc(c, stream);
@@ -274,7 +322,12 @@ token_t getToken(FILE* stream) {
         case ST_EQUAL_SIGN:
             if (c == '=') {foundToken = true; state = ST_START; token.type = TKN_EQUAL;}
             else if (c == '>') {foundToken = true; state = ST_START; token.type = TKN_EXT_EQUAL_GREATER;}
-            else {free(string.str); exit(1);} //LEX ERR 1 
+            else {
+                ungetc(c, stream);
+                foundToken = true;
+                token.type = TKN_ASSING;
+                state = ST_START;
+            } 
             break;
         case ST_NOT:
             if (c == '=') {foundToken = true; state = ST_START; token.type = TKN_NOT_EQUAL;} //TODO add state = ststart
@@ -286,12 +339,12 @@ token_t getToken(FILE* stream) {
             while (depthCount) {
                 c = getc(stream);
                 if (c == EOF || c < 0 || 127 < c) {free(string.str); exit(1);}
-                else if (c == '10') asNewLine = true;
+                else if (c == 10) asNewLine = true;
                 else if (c == '/') {
                 slash:
                     if ((c = getc(stream)) == '*')
                         depthCount++;
-                    else if (c == '10') asNewLine = true; 
+                    else if (c == 10) asNewLine = true; 
                     else if (c == '/') goto slash;
                     else if (c == EOF || c < 0 || 127 < c) {free(string.str); exit(1);}
                 }
@@ -299,9 +352,9 @@ token_t getToken(FILE* stream) {
                 asterisk:
                     if ((c = getc(stream)) == '/')
                         depthCount--;
-                    else if (c == '10') asNewLine = true;
+                    else if (c == 10) asNewLine = true;
                     else if (c == '*') goto asterisk;
-                    else if (depthCount && c == EOF || c < 0 || 127 < c) {free(string.str); exit(1);}
+                    else if ((depthCount && c == EOF) || c < 0 || 127 < c) {free(string.str); exit(1);}
                 }
             }
             if (c == EOF) {foundToken = true; token.type = TKN_EOF; break;}
@@ -309,7 +362,7 @@ token_t getToken(FILE* stream) {
                 while (true){
                     c = getc(stream);
                     EOF_AND_OUT_OF_ASCII_CHECK
-                    else if (c == '10') {
+                    else if (c == 10) {
                         token.type = TKN_NEWLINE;
                         foundToken = true;
                         state = ST_INDENTATION;
@@ -317,9 +370,6 @@ token_t getToken(FILE* stream) {
                 }
             } 
             break;        
-        case ST_DOUBLE_SLASH_COMMENT:
-            if (c == '10') state = ST_INDENTATION; //komentář jako LF 
-            break;
         case ST_EXT_UNDERSCORE:
             if (c == '_') {
                 state = ST_ID_UNDERSCORES;
@@ -350,6 +400,7 @@ token_t getToken(FILE* stream) {
                 token.type = TKN_ID;
                 token.string = string.str;
                 foundToken = true;
+                state = ST_START;
                 if (c == '.') {
                     if( string.length == 5 &&
                         string.str[0] == 'i' &&
@@ -378,12 +429,12 @@ token_t getToken(FILE* stream) {
                         }
                         else COMPARE_WITH_KEYWORD(for, TKN_EXT_FOR)
                         else COMPARE_WITH_KEYWORD(def, TKN_DEF)
-                        else COMPARE_WITH_KEYWORD(Int, TKN_INT)
+                        else COMPARE_WITH_KEYWORD(Int, TKN_INT_KEYWORD)
                         break;
                     case 4: //else, then, Unit, type, case, List
                         COMPARE_WITH_KEYWORD(else, TKN_ELSE)
                         else COMPARE_WITH_KEYWORD(then, TKN_THEN)
-                        else COMPARE_WITH_KEYWORD(Unit, TKN_UNIT)
+                        else COMPARE_WITH_KEYWORD(Unit, TKN_UNIT_KEYWORD)
                         else COMPARE_WITH_KEYWORD(type, TKN_EXT_TYPE)
                         else COMPARE_WITH_KEYWORD(case, TKN_EXT_CASE)
                         else COMPARE_WITH_KEYWORD(List, TKN_EXT_LIST)
@@ -395,29 +446,14 @@ token_t getToken(FILE* stream) {
                         break;
                     case 6: //return, Double, import, String
                         COMPARE_WITH_KEYWORD(return, TKN_RETURN)
-                        else COMPARE_WITH_KEYWORD(Double, TKN_DOUBLE)
+                        else COMPARE_WITH_KEYWORD(Double, TKN_DOUBLE_KEYWORD)
                         else COMPARE_WITH_KEYWORD(import, TKN_IMPORT)
-                        else COMPARE_WITH_KEYWORD(String, TKN_STRING)
+                        else COMPARE_WITH_KEYWORD(String, TKN_STRING_KEYWORD)
                         break;
                     case 9: //extension
                         COMPARE_WITH_KEYWORD(extension, TKN_EXT_EXTENSION)
                         break;
                 }
-            }
-            break;
-        case ST_OPENING_PARENTHESES: //LF BEHAVES AS A WHITESPACE IN PARENTHESES
-            inParentheses = true;
-            if (c == ')') {
-                inParentheses = false;
-                token.type = TKN_UNIT;
-                foundToken = true;
-                state = ST_START;
-            }
-            else {
-                token.type = TKN_OPENING_PARENTHESES;
-                foundToken = true;
-                state = ST_START;
-                ungetc(c, stream);
             }
             break;
         case ST_OPENING_QUOTATION_MARK:
@@ -440,7 +476,9 @@ token_t getToken(FILE* stream) {
             if (c == '"') state = ST_MULTILINE_STRING;
             else { //empty string
                 token.type = TKN_STRING;
-                token.string = "\0";
+                string.str[0] = '\0';
+                string.length = 0;
+                token.string = string.str;
                 foundToken = true;
                 state = ST_START;
                 ungetc(c, stream);
@@ -470,7 +508,12 @@ token_t getToken(FILE* stream) {
             }
             break;
         case ST_IN_STRING:
-            if (c == '"') {foundToken = true; state = ST_START; token.type = TKN_STRING;}
+            if (c == '"') {
+                foundToken = true; 
+                state = ST_START; 
+                token.type = TKN_STRING;
+                token.string = string.str;
+            }
             else if (c == '\\') {
                 state = ST_IN_ESC_SEQ;
                 stringAppend(&string, c);
@@ -486,5 +529,8 @@ token_t getToken(FILE* stream) {
     }
     if(token.type != TKN_ID && token.type != TKN_STRING && token.type != TKN_MULTILINE_STRING)
         free(string.str);
+#ifdef DEBUG
+        printf("token found: %d\n", token.type);
+#endif
     return token;
 }

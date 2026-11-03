@@ -1,2 +1,6 @@
 .vscode
 *.zip
+*.o
+*.exe
+/tests/IFJ26codeExamples
+scanner_tester_output.txt
