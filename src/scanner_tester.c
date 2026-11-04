@@ -9,6 +9,18 @@
 void token_print(token_t* token, FILE* outputFile){
 switch (token->type) //https://share.gemini.google/exHWaq43ZcTA
     {
+    case TKN_OPENING_SQUARE_PARENTHESES:
+        fprintf(outputFile, "['[', ] ");
+        break;
+    case TKN_CLOSING_SQUARE_PARENTHESES:
+        fprintf(outputFile, "[']', ] ");
+        break;
+    case TKN_DOT:
+        fprintf(outputFile, "['.',] ");
+        break;
+    case TKN_BOOLEAN:
+        fprintf(outputFile, "[Boolean, ] ");
+        break;
     case TKN_ASSING:
         fprintf(outputFile, "[=, ] ");
         break;

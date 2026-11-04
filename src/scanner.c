@@ -71,7 +71,10 @@ token_t getToken(FILE* stream) {
             else if (c == '_') state = ST_EXT_UNDERSCORE;
             else if (c == ')') {foundToken = true; token.type = TKN_CLOSING_PARENTHESES; inParentheses = false;}
             else if (c == '(') {foundToken = true; token.type = TKN_OPENING_PARENTHESES; inParentheses = true;}
+            else if (c == ']') {foundToken = true; token.type = TKN_CLOSING_SQUARE_PARENTHESES;}
+            else if (c == '[') {foundToken = true; token.type = TKN_OPENING_SQUARE_PARENTHESES;}
             else if (c == '|') {foundToken = true; token.type = TKN_EXT_VERTICAL_LINE;}
+            else if (c == '.') {foundToken = true; token.type = TKN_DOT;}
             else if (c == '"') {
                 state = ST_OPENING_QUOTATION_MARK;
                 string.length = 0;
@@ -150,6 +153,7 @@ token_t getToken(FILE* stream) {
                 string.length = 1;
             }
             else {
+                ungetc(c, stream);
                 token.type = TKN_INT;
                 token.intValue = 0;
                 state = ST_START;
@@ -393,7 +397,7 @@ token_t getToken(FILE* stream) {
             }
             break;
         case ST_ID:
-            if (('0' <= c && c <= '9')||('A' <= c && 'Z' <= c)||('a' <= c && c <= 'z')) {
+            if (('0' <= c && c <= '9')||('A' <= c && c <= 'Z')||('a' <= c && c <= 'z')) {
                 stringAppend(&string, c);
                 break; //stays
             } else {
@@ -413,7 +417,7 @@ token_t getToken(FILE* stream) {
                             foundToken = true;
                             state = ST_START;
                             break;
-                    } else {free(string.str); exit(1);} //LEX ERR 1  //TODO extensions?
+                    }
                 }
                 ungetc(c, stream);
                 switch (string.length) //TODO SHORTEN, makro pro found state type a funkce pro cmp
@@ -449,6 +453,9 @@ token_t getToken(FILE* stream) {
                         else COMPARE_WITH_KEYWORD(Double, TKN_DOUBLE_KEYWORD)
                         else COMPARE_WITH_KEYWORD(import, TKN_IMPORT)
                         else COMPARE_WITH_KEYWORD(String, TKN_STRING_KEYWORD)
+                        break;
+                    case 7: //Boolean
+                        COMPARE_WITH_KEYWORD(Boolean, TKN_BOOLEAN)
                         break;
                     case 9: //extension
                         COMPARE_WITH_KEYWORD(extension, TKN_EXT_EXTENSION)
