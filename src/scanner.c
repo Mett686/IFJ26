@@ -1,27 +1,50 @@
+// scanner.c
+// Autor: Filip Maxa, FIT
+
 #include "scanner_private.h"
 #include "scanner.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-/** *
-*
- */
+#define DEBUG 1
+#define STR_CMP(i, c) (string.str[i] == (c))
+#define TOKEN_FOUND_RETURN_TO_START(tkn) {foundToken = true; state = ST_START; token.type = tkn;}
+#define COMPARE_WITH_KEYWORD(keyword, tkn) if(!strcmp(string.str, #keyword)) TOKEN_FOUND_RETURN_TO_START(tkn) 
+#define EOF_AND_OUT_OF_ASCII_CHECK if (c == EOF) {foundToken = true; token.type = TKN_EOF; break;}  else if (c < 0 || 127 < c) {free(string.str); exit(1);} //LEX ERR 1 //MIMO ASCII KROMĚ EOF
+
+indentation_stack_t indentationStack = {.top = 0, .capacity = (unsigned)STACK_STARTING_CAPACITY, .stack = NULL};
+
 token_t getToken(FILE* stream) {
-    static bool lastTokenNL = false;
-    enum EState state = ST_START;
-    if(lastTokenNL)
-        state = ST_INDENTATION;
+    bool foundToken = false;
+    static EState state = ST_START;
     token_t token = {.type = TKN_NONE};
-    string_t string = {.capacity = STRING_STARTING_CAPACITY, .length = 0, .str = NULL};
+    if(indentationStack.stack == NULL){
+        indentationStack.stack = (unsigned*)malloc(STACK_STARTING_CAPACITY);
+        if(indentationStack.stack == NULL)
+            exit(-1);
+        indentationStack.stack[0] = 0;
+    }
+    static unsigned toDedent = 0;
+    string_t string = {.capacity = (unsigned)STRING_STARTING_CAPACITY, .length = 0, .str = NULL};
     string.str = (char*)malloc(STRING_STARTING_CAPACITY);
-    if (string.str == NULL);
-        abort(); //TODO
+    if (string.str == NULL)
+        exit(-1); //TODO vnitřní err
     bool inParentheses = false; //NL v závorkách se chová jako obyčejný whitespace
     int c;
-    while ((c = getc(stream)) != EOF) 
+    while (!foundToken) 
     {
-        if (c < 0 || 127 < c) //MIMO ASCII
-            state = ST_LEX_ERROR_1;
+        if(toDedent){
+            token.type = TKN_DEDENTATION;
+            toDedent--;
+            foundToken = true;
+            break;
+        }
+        c = getc(stream);
+#ifdef DEBUG
+        printf("char: '%c',\t state: %d,\t %s\n", c, state, string.str);
+#endif
+        EOF_AND_OUT_OF_ASCII_CHECK
         switch (state) //https://share.gemini.google/zIizBiReNRVX
         {
         case ST_START:
@@ -33,80 +56,87 @@ token_t getToken(FILE* stream) {
                 token.intValue = (c - '0');
                 state = ST_NONZERO_BEGINNING;
             }
-            else if (c == '-') state = ST_MINUS;
-            else if (c == '+') state = ST_PLUS;
+            else if (c == '-') {foundToken = true; token.type = TKN_MINUS;}
+            else if (c == '+') {foundToken = true; token.type = TKN_PLUS;}
             else if (c == '/') state = ST_DIVISION_SLASH;
-            else if (c == '*') state = ST_TIMES;
-            else if (c == ',') state = ST_COMMA;
-            else if (c == ':') state = ST_COLON;
-            else if (c == ';') state = ST_SEMICOLON;
+            else if (c == '*') {foundToken = true; token.type = TKN_TIMES;}
+            else if (c == ',') {foundToken = true; token.type = TKN_COMMA;}
+            else if (c == ':') {foundToken = true; token.type = TKN_COLON;}
+            else if (c == ';') {foundToken = true; token.type = TKN_SEMICOLON;}
             else if (c == '!') state = ST_NOT;
             else if (c == '=') state = ST_EQUAL_SIGN;
             else if (c == '>') state = ST_GREATER;
             else if (c == '<') state = ST_LESS;
             else if (('A' <= c && c <= 'Z')||('a' <= c && c <= 'z')) state = ST_ID;
             else if (c == '_') state = ST_EXT_UNDERSCORE;
-            else if (c == ')') state = ST_CLOSING_PARENTHESES;
-            else if (c == '(') state = ST_OPENING_PARENTHESES;
+            else if (c == ')') {foundToken = true; token.type = TKN_CLOSING_PARENTHESES; inParentheses = false;}
+            else if (c == '(') {foundToken = true; token.type = TKN_OPENING_PARENTHESES; inParentheses = true;}
+            else if (c == ']') {foundToken = true; token.type = TKN_CLOSING_SQUARE_PARENTHESES;}
+            else if (c == '[') {foundToken = true; token.type = TKN_OPENING_SQUARE_PARENTHESES;}
+            else if (c == '|') {foundToken = true; token.type = TKN_EXT_VERTICAL_LINE;}
+            else if (c == '.') {foundToken = true; token.type = TKN_DOT;}
             else if (c == '"') {
                 state = ST_OPENING_QUOTATION_MARK;
                 string.length = 0;
                 string.str[0] = '\0';
             }
-            else if (c == '@') state = ST_AT_MAIN;
-            else if (c == '10' && !inParentheses) {
-                token.type = TKN_NEWLINE;
-                lastTokenNL = true;
-                free(string.str);
-                return token;
-            }
-            else if (c <= 127) break; //zbylé ASCII ingoruji
-            break;
-        case ST_EOF:
-            token.type = TKN_EOF;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
-        case ST_AT_MAIN:
-            if (getc(stream) == 'm' &&
-                getc(stream) == 'a' &&
-                getc(stream) == 'i' &&
-                getc(stream) == 'n'){
-                    token.type = TKN_AT_MAIN;
-                    lastTokenNL = false;
-                    free(string.str);
-                    return token;
+            else if (c == '@'){
+                printf("add\n");
+                if (getc(stream) == 'm' &&
+                    getc(stream) == 'a' &&
+                    getc(stream) == 'i' &&
+                    getc(stream) == 'n'){
+                        token.type = TKN_AT_MAIN;
+                        state = ST_START;
+                        foundToken = true;
+                    } else {free(string.str); exit(1);} //LEX ERR 1 
+                } else if (c == 10) {
+                if(!inParentheses){
+                    token.type = TKN_NEWLINE;
+                    foundToken = true;
                 }
-            else state = ST_LEX_ERROR_1;
+                state = ST_INDENTATION;
+            } //ignoring the rest of ASCII symbols
             break;
         case ST_INDENTATION:
             unsigned spaces = 0;
-            if(c = getc(stream) == 9) { //(tabulátor na začátku neprázdného řádku je lexikální chyba 1
-                while (0 <= (c = getc(stream)) && c <= 32 || c == 127) {;}
-                if(c != 10){
-                    state = ST_LEX_ERROR_1;
-                    break;
-                }
-                token.type = TKN_NEWLINE;
-                lastTokenNL = true;
-                free(string.str);
-                return token;                    
+            if(c == 9) { //tabulátor na začátku neprázdného řádku je lexikální chyba 1
+                while ((0 <= (c = getc(stream)) && c <= 32) || c == 127) {;} // ignoring whitespaces
+                EOF_AND_OUT_OF_ASCII_CHECK
+                if (c != 10) {free(string.str); exit(1);} //LEX ERR 1
+                token.type = TKN_NEWLINE; //TODO spíš ignor?
+                foundToken = true;
+                break;
             }
-            if (c < 0 || 127 < c) { //MIMO ASCII
-                state = ST_LEX_ERROR_1;
+            while (c == ' '){
+                spaces++; 
+                c = getc(stream);
+            }
+            EOF_AND_OUT_OF_ASCII_CHECK
+            if (c == 10){
+                token.type = TKN_NEWLINE;
+                foundToken = true;
+                state = ST_INDENTATION;
                 break;
-            } 
-            while ((c = getc(stream)) == ' ') spaces++;
-            if (c < 0 || 127 < c) { //MIMO ASCII
-                state = ST_LEX_ERROR_1;
-                break;
-            } 
+            }
             ungetc(c, stream);
-            token.type = TKN_INDENTATION;
-            token.intValue = (int)spaces;
-            lastTokenNL = false;
-            free(string.str);
-            return token; //i nula
+            state = ST_START;
+
+            if (spaces != indentationStack.stack[indentationStack.top]){
+                if (spaces > indentationStack.stack[indentationStack.top]){
+                    push(&indentationStack, spaces);
+                    token.type = TKN_INDENTATION;
+                    foundToken = true;
+                } else {
+                    while (indentationStack.stack[indentationStack.top] > spaces){
+                        indentationStack.top--;
+                        toDedent++;
+                    }
+                    if (indentationStack.stack[indentationStack.top] != spaces)
+                        exit(1);
+                }
+            }
+            state = ST_START;
             break;
         case ST_ZERO_BEGINNING:      
             if (c == '0') break; //stays in this state, string stays at 0
@@ -123,16 +153,16 @@ token_t getToken(FILE* stream) {
                 string.length = 1;
             }
             else {
+                ungetc(c, stream);
                 token.type = TKN_INT;
                 token.intValue = 0;
-                lastTokenNL = false;
-                free(string.str);
-                return token; //0
+                state = ST_START;
+                foundToken = true;
             }
             break;
         case ST_ZB_UNDERSCORE:
             if ('0' <= c && c <= '9') state = ST_ZERO_BEGINNING;
-            else state = ST_LEX_ERROR_1;
+            else {free(string.str); exit(1);} //LEX ERR 1 
             break;
         case ST_NONZERO_BEGINNING:
             if ('0' <= c && c <= '9') {
@@ -147,21 +177,21 @@ token_t getToken(FILE* stream) {
             }    
             else {
                 token.type = TKN_INT;
-                lastTokenNL = false;
-                free(string.str);
-                return token;
+                ungetc(c, stream);
+                state = ST_START;
+                foundToken = true;
             }
             break;
         case ST_NZB_UNDERSCORE:
             if ('0' <= c && c <= '9') state = ST_NONZERO_BEGINNING;
-            else state = ST_LEX_ERROR_1;
+            else {free(string.str); exit(1);} //LEX ERR 1 
             break;
         case ST_DOUBLE_DECIMAL_DOT:
             if ('0' <= c && c <= '9') {
                 state = ST_DECIMAL_PART;
                 stringAppend(&string, c);
             }
-            else state = ST_LEX_ERROR_1;
+            else {free(string.str); exit(1);} //LEX ERR 1 
             break;
         case ST_DECIMAL_PART:
             if ('0' <= c && c <= '9') {
@@ -176,15 +206,15 @@ token_t getToken(FILE* stream) {
             else if (c == 'd' || c == 'D') state = ST_DOUBLE_SUFIX;
             else {
                 token.type = TKN_DOUBLE;
-                //token.doubleValue = string TODO
-                lastTokenNL = false;
-                free(string.str);
-                return token;
+                token.doubleValue = strtod(string.str, NULL);
+                ungetc(c, stream);
+                state = ST_START;
+                foundToken = true;
             }
             break;
         case ST_DP_UNDERSCORE:
             if ('0' <= c && c <= '9') state = ST_DECIMAL_PART;
-            else state = ST_LEX_ERROR_1;
+            else {free(string.str); exit(1);} //LEX ERR 1 
             break;
         case ST_INTEGER_PART:
             if ('0' <= c && c <= '9') {
@@ -203,7 +233,7 @@ token_t getToken(FILE* stream) {
             break;
         case ST_IP_UNDERSCORE:
             if ('0' <= c && c <= '9') state = ST_INTEGER_PART;
-            else state = ST_LEX_ERROR_1;
+            else {free(string.str); exit(1);} //LEX ERR 1 
             break;
         case ST_EXP_PREFIX:
             if ('0' <= c && c <= '9') {
@@ -214,14 +244,14 @@ token_t getToken(FILE* stream) {
                 state = ST_EXP_SING;
                 stringAppend(&string, c);
             }
-            else state = ST_LEX_ERROR_1;
+            else {free(string.str); exit(1);} //LEX ERR 1 
             break;
         case ST_EXP_SING:
             if ('1' <= c && c <= '9') {
                 state = ST_EXPONENT;
                 stringAppend(&string, c);
             }
-            else state = ST_LEX_ERROR_1;
+            else {free(string.str); exit(1);} //LEX ERR 1 
             break;
         case ST_EXPONENT:
             if ('0' <= c && c <= '9') {
@@ -229,13 +259,13 @@ token_t getToken(FILE* stream) {
                 break; //stays
             }
             else if (c == '_') state = ST_EXP_UNDERSCORE;
-            else if (c == 'd', c == 'D') state = ST_DOUBLE_SUFIX;
+            else if (c == 'd' || c == 'D') state = ST_DOUBLE_SUFIX;
             else {
                 token.type = TKN_DOUBLE;
-                //token.doubleValue = string TODO
-                lastTokenNL = false;
-                free(string.str);
-                return token;
+                token.doubleValue = strtod(string.str, NULL);
+                ungetc(c, stream);
+                state = ST_START;
+                foundToken = true;
             }
             break;
         case ST_EXP_UNDERSCORE:
@@ -243,146 +273,107 @@ token_t getToken(FILE* stream) {
                 state = ST_EXPONENT;
                 stringAppend(&string, c);
             }
-            else state = ST_LEX_ERROR_1;
+            else {free(string.str); exit(1);} //LEX ERR 1 
             break;
-        case ST_DOUBLE_SUFIX:
+        case ST_DOUBLE_SUFIX: //TODO remove sufixes
             token.type = TKN_DOUBLE;
-            //token.doubleValue = string TODO
-            lastTokenNL = false;
-            free(string.str);
-            return token;
-        case ST_MINUS:
-            token.type = TKN_MINUS;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
-        case ST_PLUS:
-            token.type = TKN_PLUS;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
+            token.doubleValue = strtod(string.str, NULL);
+            ungetc(c, stream);
+            state = ST_START;
+            foundToken = true;
+            break;
         case ST_DIVISION_SLASH:
             if (c == '*') state = ST_OPENING_BLOCK_COMMENT;
-            else if (c == '/') state = ST_DOUBLE_SLASH_COMMENT;
+            else if (c == '/') {
+                state = ST_INDENTATION;
+                while ((c=getc(stream)) != 10 && c != EOF) {;}
+                foundToken = true;
+                if(c == 10){
+                    token.type = TKN_NEWLINE;
+                    state = ST_INDENTATION;
+                } else if (c == EOF){
+                    token.type = TKN_EOF;
+                    state = ST_START;
+                }
+                break;
+            }
             else {
                 token.type = TKN_DIVISION_SLASH;
-                lastTokenNL = false;
-                free(string.str);
-                return token;
+                ungetc(c, stream);
+                state = ST_START;
+                foundToken = true;
             }
             break;
-        case ST_TIMES:
-            token.type = TKN_TIMES;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
-        case ST_COMMA:
-            token.type = TKN_COMMA;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
-        case ST_COLON:
-            token.type = TKN_COLON;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
-        case ST_SEMICOLON:
-            token.type = TKN_SEMICOLON;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
         case ST_LESS:
-            if (c == '=') state = ST_LESS_EQUAL;
-            else if (c == '-') state = ST_EXT_LESS_MINUS;
+            if (c == '=') {foundToken = true; state = ST_START; token.type = TKN_LESS_EQUAL;}
+            else if (c == '-') {foundToken = true; state = ST_START; token.type = TKN_EXT_LESS_MINUS;}
             else {
                 token.type = TKN_LESS;
-                lastTokenNL = false;
-                free(string.str);
-                return token;
+                ungetc(c, stream);
+                state = ST_START;
+                foundToken = true;
             }
             break;
-        case ST_LESS_EQUAL:
-            token.type = TKN_LESS_EQUAL;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
-        case ST_EXT_LESS_MINUS:
-            token.type = TKN_EXT_LESS_MINUS;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
         case ST_GREATER:
-            if (c == '=') state = ST_GREATER_EQUAL;
+            if (c == '=') {foundToken = true; state = ST_START; token.type = TKN_GREATER_EQUAL;}
             else {
                 token.type = TKN_GREATER;
-                lastTokenNL = false;
-                free(string.str);
-                return token;
+                foundToken = true;
+                ungetc(c, stream);
+                state = ST_START;
             }
             break;
-        case ST_GREATER_EQUAL:
-            token.type = TKN_GREATER_EQUAL;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
         case ST_EQUAL_SIGN:
-            if (c == '=') state = ST_DOUBLE_EQUAL_SIGN;
-            else if (c == '>') state = ST_EXT_EQUAL_GREATER;
-            else state = ST_LEX_ERROR_1;
+            if (c == '=') {foundToken = true; state = ST_START; token.type = TKN_EQUAL;}
+            else if (c == '>') {foundToken = true; state = ST_START; token.type = TKN_EXT_EQUAL_GREATER;}
+            else {
+                ungetc(c, stream);
+                foundToken = true;
+                token.type = TKN_ASSING;
+                state = ST_START;
+            } 
             break;
-        case ST_DOUBLE_EQUAL_SIGN:
-            token.type = TKN_EQUAL;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
-        case ST_EXT_EQUAL_GREATER:
-            token.type = TKN_EXT_EQUAL_GREATER;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
         case ST_NOT:
-            if (c == '=') state = ST_NOT_EQUAL;
-            else state = ST_LEX_ERROR_1;
+            if (c == '=') {foundToken = true; state = ST_START; token.type = TKN_NOT_EQUAL;} //TODO add state = ststart
+            else {free(string.str); exit(1);} //LEX ERR 1 
             break;
-        case ST_NOT_EQUAL:
-            token.type = TKN_NOT_EQUAL;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
         case ST_OPENING_BLOCK_COMMENT: //řeší i jiné stavy z FSM
             unsigned depthCount = 1;
             bool asNewLine = false;
             while (depthCount) {
                 c = getc(stream);
-                if (c == '10') asNewLine = true;
-                else if (c == '/')
+                if (c == EOF || c < 0 || 127 < c) {free(string.str); exit(1);}
+                else if (c == 10) asNewLine = true;
+                else if (c == '/') {
+                slash:
                     if ((c = getc(stream)) == '*')
                         depthCount++;
-                    else if (c == '10') asNewLine = true; 
-                else if (c == '*')
+                    else if (c == 10) asNewLine = true; 
+                    else if (c == '/') goto slash;
+                    else if (c == EOF || c < 0 || 127 < c) {free(string.str); exit(1);}
+                }
+                else if (c == '*'){
+                asterisk:
                     if ((c = getc(stream)) == '/')
                         depthCount--;
-                    else if (c == '10') asNewLine = true;
-                else if (c < 0 || 127 < c) { //MIMO ASCII
-                    state = ST_LEX_ERROR_1;
-                    break;
-                } 
+                    else if (c == 10) asNewLine = true;
+                    else if (c == '*') goto asterisk;
+                    else if ((depthCount && c == EOF) || c < 0 || 127 < c) {free(string.str); exit(1);}
+                }
             }
+            if (c == EOF) {foundToken = true; token.type = TKN_EOF; break;}
             if(asNewLine){
-                token.type = TKN_NEWLINE;
-                lastTokenNL = true;
-                free(string.str);
-                return token;
+                while (true){
+                    c = getc(stream);
+                    EOF_AND_OUT_OF_ASCII_CHECK
+                    else if (c == 10) {
+                        token.type = TKN_NEWLINE;
+                        foundToken = true;
+                        state = ST_INDENTATION;
+                    } else if (32 < c && c < 127) {free(string.str); exit(1);} //LEX ERR 1 
+                }
             } 
             break;        
-        case ST_DOUBLE_SLASH_COMMENT:
-            if (c == '10') state = ST_INDENTATION; //komentář jako LF 
-            break;
-        case ST_EXT_VERTICAL_LINE:
-            token.type = TKN_EXT_VERTICAL_LINE;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
         case ST_EXT_UNDERSCORE:
             if (c == '_') {
                 state = ST_ID_UNDERSCORES;
@@ -390,9 +381,9 @@ token_t getToken(FILE* stream) {
             }
             else {
                 token.type = TKN_EXT_UNDERSCORE;
-                lastTokenNL = false;
-                free(string.str);
-                return token;
+                foundToken = true;
+                state = ST_START;
+                ungetc(c, stream);
             }
             break;
         case ST_ID_UNDERSCORES:
@@ -406,13 +397,14 @@ token_t getToken(FILE* stream) {
             }
             break;
         case ST_ID:
-            if (('0' <= c && c <= '9')||('A' <= c && 'Z' <= c)||('a' <= c && c <= 'z')) {
+            if (('0' <= c && c <= '9')||('A' <= c && c <= 'Z')||('a' <= c && c <= 'z')) {
                 stringAppend(&string, c);
                 break; //stays
             } else {
                 token.type = TKN_ID;
                 token.string = string.str;
-                lastTokenNL = false;
+                foundToken = true;
+                state = ST_START;
                 if (c == '.') {
                     if( string.length == 5 &&
                         string.str[0] == 'i' &&
@@ -421,121 +413,56 @@ token_t getToken(FILE* stream) {
                         string.str[3] == '2' &&
                         string.str[4] == '6' &&
                         (c = getc(stream)) == '*'){ 
-                            lastTokenNL = false;
                             token.type = TKN_IFJ26dot_asterisk;
-                            free(string.str);
-                            return token;
-                    } else {
-                        state = ST_LEX_ERROR_1;
-                        break;
+                            foundToken = true;
+                            state = ST_START;
+                            break;
                     }
                 }
-                if (/*do, if*/ 2 <= string.length && string.length <= 9 /*extension*/) { //https://share.gemini.google/uzB0xNxAyMXs
-                    switch (string.str[0]) //todo makra na zkraceni zapisu?
-                    {
-                        case 'c': //case, class 
-                            if (string.length == 4 && string.str[1] == 'a' && string.str[2] == 's' && string.str[3] == 'e')
-                                token.type = TKN_EXT_CASE;
-                            else if (string.length == 5 && string.str[1] == 'l' && string.str[2] == 'a' && string.str[3] == 's' && string.str[4] == 's')
-                                token.type = TKN_EXT_CLASS;
-                            break;
-                        case 'd': //def, do
-                            if (string.length == 2 && string.str[1] == 'o')
-                                token.type = TKN_DO;
-                            else if (string.length == 3 && string.str[1] == 'e' && string.str[2] == 'f')
-                                token.type = TKN_DEF;
-                            break;
-                        case 'D': //Double
-                            if (string.length == 6 && string.str[1] == 'o' && string.str[2] == 'u' && string.str[3] == 'b' && string.str[4] == 'l' && string.str[5] == 'e')
-                                token.type = TKN_DOUBLE;
-                            break;
-                        case 'e': //extension, else
-                            if (string.length == 4 && string.str[1] == 'l' && string.str[2] == 's' && string.str[3] == 'e')
-                                token.type = TKN_ELSE;
-                            else if (string.length == 9 && string.str[1] == 'x' && string.str[2] == 't' && string.str[3] == 'e' && string.str[4] == 'n' && string.str[5] == 's' && string.str[6] == 'i' && string.str[7] == 'o' && string.str[8] == 'n')
-                                token.type = TKN_EXT_EXTENSION;
-                            break;
-                        case 'f': //for
-                            if (string.length == 3 && string.str[1] == 'o' && string.str[2] == 'r')
-                                token.type == TKN_EXT_FOR;
-                            break;
-                        case 'i': //if, import
-                            if (string.length == 2 && string.str[1] == 'f')
-                                token.type = TKN_IF;
-                            else if (string.length == 6 && string.str[1] == 'm' && string.str[2] == 'p' && string.str[3] == 'o' && string.str[4] == 'r' && string.str[5] == 't')
-                                token.type = TKN_IMPORT;
-                            break;
-                        case 'I': //Int
-                            if (string.length == 3 && string.str[1] == 'n' && string.str[2] == 't')
-                                token.type = TKN_INT;
-                            break;
-                        case 'L': //List
-                            if (string.length == 4 && string.str[1] == 'i' && string.str[2] == 's' && string.str[3] == 't')
-                                token.type = TKN_EXT_LIST;
-                            break;
-                        case 'm': //match
-                            if (string.length == 5 && string.str[1] == 'a' && string.str[2] == 't' && string.str[3] == 'c' && string.str[4] == 'h')
-                                token.type = TKN_EXT_MATCH;
-                            break;
-                        case 'r': //return
-                            if (string.length == 6 && string.str[1] == 'e' && string.str[2] == 't' && string.str[3] == 'u' && string.str[4] == 'r' && string.str[5] == 'n')
-                                token.type = TKN_RETURN;
-                            break;
-                        case 'S': //String
-                            if (string.length == 6 && string.str[1] == 't' && string.str[2] == 'r' && string.str[3] == 'i' && string.str[4] == 'n' && string.str[5] == 'g')
-                                token.type = TKN_STRING;
-                            break;
-                        case 't': //then, type
-                            if (string.length == 4){
-                                if (string.str[1] == 'h' && string.str[2] == 'e' && string.str[3] == 'n')
-                                    token.type = TKN_THEN;
-                                else if (string.str[1] == 'y' && string.str[2] == 'p' && string.str[3] == 'e')
-                                    token.type = TKN_EXT_TYPE;
-                            }
-                            break;
-                        case 'U': //Unit
-                            if (string.length == 4 && string.str[1] == 'n' && string.str[2] == 'i' && string.str[3] == 't')
-                            break;
-                        case 'v': //val, var
-                            if (string.length == 3 && string.str[1] == 'a')
-                                if(string.str[2] == 'l')
-                                    token.type = TKN_VAL;
-                                else if(string.str[2] == 'r')
-                                    token.type = TKN_VAR;
-                            break;
-                        case 'w': //while
-                            if (string.length == 5 && string.str[1] == 'h' && string.str[2] == 'i' && string.str[3] == 'l' && string.str[4] == 'e')
-                            break;
-                    default:
+                ungetc(c, stream);
+                switch (string.length) //TODO SHORTEN, makro pro found state type a funkce pro cmp
+                {
+                    case 2: //if, do
+                        COMPARE_WITH_KEYWORD(if, TKN_IF)
+                        else COMPARE_WITH_KEYWORD(do, TKN_DO)
                         break;
-                    }
+                    case 3: //val, var, for, def, Int
+                        if (STR_CMP(0, 'v') && STR_CMP(1, 'a')) {
+                            if (STR_CMP(2, 'r')) TOKEN_FOUND_RETURN_TO_START(TKN_VAR)
+                            else if (STR_CMP(2, 'l')) TOKEN_FOUND_RETURN_TO_START(TKN_VAL) 
+                        }
+                        else COMPARE_WITH_KEYWORD(for, TKN_EXT_FOR)
+                        else COMPARE_WITH_KEYWORD(def, TKN_DEF)
+                        else COMPARE_WITH_KEYWORD(Int, TKN_INT_KEYWORD)
+                        break;
+                    case 4: //else, then, Unit, type, case, List
+                        COMPARE_WITH_KEYWORD(else, TKN_ELSE)
+                        else COMPARE_WITH_KEYWORD(then, TKN_THEN)
+                        else COMPARE_WITH_KEYWORD(Unit, TKN_UNIT_KEYWORD)
+                        else COMPARE_WITH_KEYWORD(type, TKN_EXT_TYPE)
+                        else COMPARE_WITH_KEYWORD(case, TKN_EXT_CASE)
+                        else COMPARE_WITH_KEYWORD(List, TKN_EXT_LIST)
+                        break;
+                    case 5: //while, class, match
+                        COMPARE_WITH_KEYWORD(while, TKN_WHILE)
+                        else COMPARE_WITH_KEYWORD(class, TKN_EXT_CLASS)
+                        else COMPARE_WITH_KEYWORD(match, TKN_EXT_MATCH)
+                        break;
+                    case 6: //return, Double, import, String
+                        COMPARE_WITH_KEYWORD(return, TKN_RETURN)
+                        else COMPARE_WITH_KEYWORD(Double, TKN_DOUBLE_KEYWORD)
+                        else COMPARE_WITH_KEYWORD(import, TKN_IMPORT)
+                        else COMPARE_WITH_KEYWORD(String, TKN_STRING_KEYWORD)
+                        break;
+                    case 7: //Boolean
+                        COMPARE_WITH_KEYWORD(Boolean, TKN_BOOLEAN)
+                        break;
+                    case 9: //extension
+                        COMPARE_WITH_KEYWORD(extension, TKN_EXT_EXTENSION)
+                        break;
                 }
-            }
-            if (token.type != TKN_ID)
-                free(string.str);
-            return token; //free povinnost pro identifikátory se předává
-        case ST_OPENING_PARENTHESES: //LF BEHAVES AS A WHITESPACE IN PARENTHESES
-            inParentheses = true;
-            if (c == ')') state = ST_UNIT;
-            else {
-                token.type = TKN_OPENING_PARENTHESES;
-                lastTokenNL = false;
-                free(string.str);
-                return token;
             }
             break;
-        case ST_CLOSING_PARENTHESES:
-            inParentheses = false;
-            token.type = TKN_CLOSING_PARENTHESES;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
-        case ST_UNIT:
-            inParentheses = false;
-            token.type = TKN_UNIT;
-            lastTokenNL = false;
-            free(string.str);
-            return token;
         case ST_OPENING_QUOTATION_MARK:
             if(c == '"') state = ST_TWO_QUOTATION_MARKS;
             else if (c == '\\') {
@@ -544,7 +471,7 @@ token_t getToken(FILE* stream) {
                 string.str[1] = '\0';
                 string.length = 1;
             }
-            else if (c == 10) state = ST_LEX_ERROR_1;
+            else if (c == 10) {free(string.str); exit(1);} //LEX ERR 1 
             else {
                 state = ST_IN_STRING;
                 string.str[0] = c;
@@ -554,12 +481,14 @@ token_t getToken(FILE* stream) {
             break;
         case ST_TWO_QUOTATION_MARKS:
             if (c == '"') state = ST_MULTILINE_STRING;
-            else {
+            else { //empty string
                 token.type = TKN_STRING;
-                token.string = "\0";
-                lastTokenNL = false;
-                free(string.str);
-                return token; //empty string
+                string.str[0] = '\0';
+                string.length = 0;
+                token.string = string.str;
+                foundToken = true;
+                state = ST_START;
+                ungetc(c, stream);
             }
             break;
         case ST_MULTILINE_STRING:
@@ -573,47 +502,42 @@ token_t getToken(FILE* stream) {
             break;
         case ST_SECOND_CLOSING_QUATATION_MARK_IN_A_MULTILINE_STRING:
             if (c == '"') {
-                state = ST_ENDING_A_MULTILINE_STRING;
                 string.length = string.length - 3;
                 string.str[string.length] = '\0';
+                token.type = TKN_MULTILINE_STRING;
+                token.string = string.str;
+                foundToken = true;
+                state = ST_START; //TODO check
             }
             else {
                 state = ST_MULTILINE_STRING;
                 stringAppend(&string, c);
             }
             break;
-        case ST_ENDING_A_MULTILINE_STRING:
-            token.type = TKN_MULTILINE_STRING;
-            token.string = string.str;
-            lastTokenNL = false;
-            return token; //free povinnost se předává
         case ST_IN_STRING:
-            if (c == '"') state = ST_ENDING_STRING;
+            if (c == '"') {
+                foundToken = true; 
+                state = ST_START; 
+                token.type = TKN_STRING;
+                token.string = string.str;
+            }
             else if (c == '\\') {
                 state = ST_IN_ESC_SEQ;
                 stringAppend(&string, c);
             }
-            else if (c == 10){
-                state = ST_LEX_ERROR_1;
-                break;
-            } 
+            else if (c == 10) {free(string.str); exit(1);} //LEX ERR 1 
             else stringAppend(&string, c);
             break; //else just stays
         case ST_IN_ESC_SEQ:
             if (c == '"' || c == '\\' || c == 'n' || c == 'r' || c == 't') state = ST_IN_STRING;
-            else state = ST_LEX_ERROR_1;
+            else {free(string.str); exit(1);} //LEX ERR 1 
             break;
-        case ST_ENDING_STRING:
-            token.type = TKN_STRING;
-            lastTokenNL = false;
-            return token; //free povinnost se předává
-        case ST_LEX_ERROR_1:
-            //TODO
-            abort();
         }
     }
-    token.type = TKN_EOF;
-    free(string.str);
-    lastTokenNL = false;
+    if(token.type != TKN_ID && token.type != TKN_STRING && token.type != TKN_MULTILINE_STRING)
+        free(string.str);
+#ifdef DEBUG
+        printf("token found: %d\n", token.type);
+#endif
     return token;
 }
