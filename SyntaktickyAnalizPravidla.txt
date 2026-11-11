@@ -1,10 +1,10 @@
-program->Prolog DefinitionList
-Prolog -> import ifj26.* "\n"
-DefinitionList -> definitionItem DefinitionList | epsilon
-DefinitionItem-> MainFuncDef
-DefinitionItem->FuncDef
-MainFuncDef-> @main ["\n"] def id(): Unit=Body
-funcDefd -> def id() ([parametList]) : type = body
+//program->Prolog DefinitionList
+//Prolog -> import ifj26.* "\n"
+//DefinitionList -> definitionItem DefinitionList | epsilon
+//DefinitionItem-> MainFuncDef
+//DefinitionItem->FuncDef
+//MainFuncDef-> @main ["\n"] def id(): Unit=Body
+//funcDefd -> def id() ([parametList]) : type = body
 parametlist -> paramet,parametlist
 parametlist->paramet epsilon
 paramet-> id : type
