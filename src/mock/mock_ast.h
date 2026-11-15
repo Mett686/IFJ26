@@ -25,6 +25,7 @@ typedef struct tnode {
     void* value;           
     struct tnode* left;    
     struct tnode* right;   
+    bool isVar;
 } tnode;
 
 #endif

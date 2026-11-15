@@ -1,3 +1,0 @@
-val x = """A
- hoj     s\nvete 
-  """

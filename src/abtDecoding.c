@@ -7,32 +7,69 @@
 #include "../src/mock/mock_ast.h"  //fix later
 #include "abtDecoding.h"
 
-static void blockCheck(const char* op, char* varName, char* varValue, htab_t* globalHashTable, htab_t* localHashTable) {
+typedef struct htabData {
+    int nested;
+    char *string;
+    bool isMutable;
+    bool isFunction;
+    int paramCount;
+    int *paramTypes;
+    int returnType;
+} htab_data_t;
+
+typedef struct htabItem {
+    char* key;
+    uint32_t hash;
+    htab_data_t data;
+} htabItem_t;
+
+typedef struct htab_wrapper {
+    struct htab_wrapper* parent;
+    htab_t* htab;
+} htab_wrapper_t;
+
+static void blockCheck(const char* op, char* varName, tnode* parent, htab_t* globalHashTable, htab_wrapper_t* localHashTable) {
     if (localHashTable == NULL || globalHashTable == NULL) {
         exit(99);
     }
 
     if ((strcmp(op, "declare")) == 0) {
-        htabItem_t* alreadyDefined = htabGet(localHashTable, varName);
+        htabItem_t* alreadyDefined = htabGet(localHashTable->htab, varName);
         if (alreadyDefined != NULL) {
             exit(4);
         }
-
-        htabWrite(localHashTable, varName, varValue);
+        htab_data_t varData;
+        varData.isFunction = false;
+        varData.isMutable = parent->isVar;
+        varData.paramCount = 0;
+        varData.paramTypes = NULL;
+        varData.returnType = parent->dataType;
+        htabWrite(localHashTable->htab, varName, varData);
 
     } else if ((strcmp(op, "assign")) == 0) {
-        htabItem_t* locallyDefined = htabGet(localHashTable, varName);
-        htabItem_t* globallyDefined = htabGet(globalHashTable, varName);
-        if (locallyDefined == NULL && globallyDefined == NULL) {
+        htabItem_t* foundItem = NULL;
+        htab_wrapper_t* searchScope = localHashTable;
+        while (searchScope != NULL){
+            foundItem = htabGet(searchScope->htab, varName);
+            if (foundItem != NULL){
+                break;
+            }
+            searchScope = searchScope->parent;     
+        }
+        //htabItem_t* globallyDefined = htabGet(globalHashTable, varName);
+        if (foundItem == NULL) {
             exit(3);
         }
 
+        if (foundItem->data.isMutable == false) {
+            exit(7);
+        }
     } else {
         exit(99);
     }
 }
 
-static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable, int* inBlock) {
+static void checkNode(tnode *parent, htab_t* hashTable, htab_wrapper_t** localHashTable, int* inBlock, int* currentReturnType) {
     int leftType;
     int rightType;
 
@@ -81,19 +118,49 @@ static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable,
         case opCall:
         {
             char *funcName = parent->left->value;
+            tnode *opArg = parent->right;
+            int index = 0;
             htabItem_t *funcDef = htabGet(hashTable, funcName);
             if (funcDef == NULL) {
                 exit(3);
             }
+            int isFunction = funcDef->data.isFunction;
+            if (isFunction == 0){
+                exit(3);
+            }
+            int parCount = funcDef->data.paramCount;
+            int *paramTypes = funcDef->data.paramTypes;
+            while (opArg != NULL){
+                if (index >= parCount){
+                    exit(5);
+                } 
+
+                int argType = opArg->left->dataType;
+                opArg = opArg->right;
+                int expectedType = paramTypes[index];
+                if (argType != expectedType){
+                    if (expectedType == TYPE_DOUBLE && argType == TYPE_INT){
+                        //automaticka konverze z int na double
+                    } else {
+                        exit(6);
+                    }
+                }
+                index++;
+            }
+            if (index != parCount){
+                exit(5);
+            }
+            parent->dataType = funcDef->data.returnType;  
             break;
         }
 
-        case opDeclare:
+        case opVarDeclare:
         {
             char *varName = parent->left->value;
 
             if (inBlock) {
-                blockCheck("declare", varName, parent->right->value, hashTable, *localHashTable);
+                blockCheck("declare", varName, parent, hashTable, *localHashTable);
+                break;
             }
 
             htabItem_t *varDef = htabGet(hashTable, varName);
@@ -102,10 +169,59 @@ static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable,
             }
 
             if (leftType != rightType || parent->dataType != leftType) {
-                exit(6);
+                if (leftType == TYPE_DOUBLE && rightType == TYPE_INT){
+                    // automaticka konverze
+                } 
+                else {
+                    exit(6);
+                }
+            }
+            htab_data_t varData;
+            varData.isFunction = false;
+            varData.isMutable = parent->isVar;
+            varData.paramCount = 0;
+            varData.paramTypes = NULL;
+            varData.returnType = parent->dataType;
+            htabWriteNew(hashTable, varName, varData);
+            break;
+        }
+
+        case funcDef:
+        {
+            *currentReturnType = parent->dataType;
+            char *funcName = parent->left->value;
+            htabItem_t *funcDef = htabGet(hashTable, funcName);
+
+            if (funcDef != NULL){
+                exit(4);
             }
 
-            htabWriteNew(hashTable, varName, parent->right);
+            int count = 0;
+            tnode *paramNode = parent->right; 
+    
+            while (paramNode != NULL) {
+                count++;
+                paramNode = paramNode->right;
+            }
+
+            int *typesArray = NULL;
+            if (count > 0) {
+                typesArray = malloc(count * sizeof(int));   
+                paramNode = parent->right;
+                int index = 0;
+                while (paramNode != NULL) {
+                    typesArray[index] = paramNode->left->dataType;
+                    index++;
+                    paramNode = paramNode->right;
+                }
+            }
+            htab_data_t funcData;
+            funcData.isFunction = true;
+            funcData.paramCount = count;
+            funcData.paramTypes = typesArray;
+            funcData.returnType = parent->dataType;
+            funcData.isMutable = false;
+            htabWriteNew(hashTable, funcName, funcData);
             break;
         }
 
@@ -113,10 +229,16 @@ static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable,
         {
             if (*inBlock) {
                 char *varName = parent->left->value;
-                blockCheck("assign", varName, parent->right->value, hashTable, *localHashTable);
+                blockCheck("assign", varName, parent, hashTable, *localHashTable);
             }
+
             if (leftType != rightType) {
-                exit(6);
+                if (leftType == TYPE_DOUBLE && rightType == TYPE_INT){
+                    // automaticka konverze
+                } 
+                else {
+                    exit(6);
+                }
             }
 
             char *varName = parent->left->value;
@@ -125,39 +247,89 @@ static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable,
             if (varDef == NULL) {
                 exit(3);
             }
+
+            if (foundItem->data.isMutable == false) {
+                exit(7);
+            }
             break;
         }
 
         case opBlock:
         {
             *inBlock = 1;
-            int dataSize = sizeof(leftType);
-            *localHashTable = htabCreate(20, dataSize);
+            int dataSize = sizeof(htab_data_t);
+            if (*localHashTable == NULL){ 
+                *localHashTable = malloc(sizeof(htab_wrapper_t));  
+                (*localHashTable)->htab = htabCreate(503, dataSize);
+                (*localHashTable)->parent = NULL;
+            } else {
+                htab_wrapper_t* newScope = malloc(sizeof(htab_wrapper_t));
+                newScope->htab = htabCreate(503, dataSize);
+                newScope->parent = *localHashTable;
+                *localHashTable = newScope;
+            }          
             break;
         }
 
         case opEndBlock:
         {
             *inBlock = 0;
+            if (*localHashTable != NULL) {
+                *localHashTable = (*localHashTable)->parent;
+            }
+            
+            if (*localHashTable == NULL) {
+                *inBlock = 0;
+            }
             break;
+        }
+
+        case opIf:
+        case opWhile:
+        {
+            if (leftType != TYPE_BOOL){
+                exit(6);
+            }
+            break;
+        }
+        case opReturn:
+        {
+            if (leftType != *currentReturnType){
+                exit(6);
+            }
+            if (*currentReturnType == -1){
+                exit(10);
+            }
         }
     }
 }
 
-static void recursiveSemanticCheck(tnode *ptr, htab_t* hashTable, htab_t** localHashTable, int* inBlock){
+static void recursiveSemanticCheck(tnode *ptr, htab_t* hashTable, htab_wrapper_t** localHashTable, int* inBlock, int* currentReturnType){
     //postOrder browsing through the abstract tree
     if (ptr == NULL) {
         return;
     }
-    recursiveSemanticCheck(ptr->left, hashTable, localHashTable, inBlock);
-    recursiveSemanticCheck(ptr->right, hashTable, localHashTable, inBlock);
+    recursiveSemanticCheck(ptr->left, hashTable, localHashTable, inBlock, currentReturnType);
+    recursiveSemanticCheck(ptr->right, hashTable, localHashTable, inBlock, currentReturnType);
     if (ptr->left != NULL || ptr->right != NULL) {
-        checkNode(ptr, hashTable, localHashTable, inBlock);
+        checkNode(ptr, hashTable, localHashTable, inBlock, currentReturnType);
     }
 }
 
 void semanticCheck(tnode *ptr, htab_t* hashTable) {
     int inBlock = 0;
-    htab_t* localHashTable = NULL;
-    recursiveSemanticCheck(ptr, hashTable, &localHashTable, &inBlock);
+    //htab_t* localHashTable = NULL;
+    //htab_wrapper_t* localHashTable = malloc(sizeof(htab_wrapper_t));
+    //localHashTable->parent = NULL;
+    htab_wrapper_t* localHashTable = NULL;
+    int currentReturnType = -1;
+    recursiveSemanticCheck(ptr, hashTable, &localHashTable, &inBlock, &currentReturnType);
+    htabItem_t *mainFunc = htabGet(hashTable, "@main");
+    if (mainFunc == NULL) {
+        exit(3);
+    }
+
+    if (mainFunc->value != NULL){
+        exit(5);
+    }
 }

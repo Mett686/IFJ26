@@ -1,7 +1,0 @@
-val name = "IFJ"
-val n =26 
-//IFJ27costs$0 
-print(s"$name${n+ 1}costs$$0") 
-//Hesaid"hello",IFJ.[novýřádek]Second line. 
-print(s"""Hesaid "hello", $name.
-Secondline.""")
