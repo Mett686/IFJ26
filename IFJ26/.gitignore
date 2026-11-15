@@ -1,0 +1,5 @@
+.vscode
+*.zip
+*.o
+*.exe
+scanner_tester_output.txt

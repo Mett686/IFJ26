@@ -1,0 +1,28 @@
+//běžnáfunkce 
+def foo(x: Int) =x +5 
+//běžnáfunkce přijímajícíjinoufunkci jakosvůj parametr 
+
+def bar(a: Int, f:(Int)=> Boolean)=
+ val result= f(a) //volání funkce přijatéz parametru 
+ if result then 
+  print("f uspelo") 
+ else 
+  print("f neuspelo") 
+//funkce,covracífunkci 
+def goo():(Int)=> String =
+ return (a: Int)=> 
+  val strA= toStr(a) 
+  "cislo"+strA 
+  
+@main def main():Unit= 
+ val add:(Int,Int)=> Int =
+  (left: Int, right:Int)=>left +right //lambda(anonymní)funkce 
+ val positive=(value: Int)=>value >0 //vyžadujeimplementaciBOOLTHEN, 
+                                     //typemje(Int)=>Boolean 
+ val addFive:(Int)=> Int =foo //doproměnnéjemožnépřiřaditběžnou 
+                              //funkci,ale musíbýt explicitně otypovaná 
+                              
+//volání funkcí uložených vproměnných 
+val x=add(10,8) 
+val y=addFive(x) 
+bar(y, positive)
