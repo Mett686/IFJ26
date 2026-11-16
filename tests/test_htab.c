@@ -3,7 +3,10 @@
 
 #include <stdio.h>
 #include <assert.h>
-#include "../src/htab_private.h"
+
+
+#include "../src/htab.h"
+#include "../src/abtDecoding.h"
 
 int main() {
     printf("  [TEST] htabCreate...\n");

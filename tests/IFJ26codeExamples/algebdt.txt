@@ -1,0 +1,27 @@
+type Scalar = Int | Double | String
+
+def foo(x: Double | String): String =
+ return toStr(x) 
+ 
+@main 
+def main(): Unit = 
+  var anything: Scalar = 5 
+  anything = "hello" 
+  foo(5) // "5" 
+  foo(anything) // typová chyba!
+
+
+case class Point(x: Int, y: Int)
+
+def pointToStr(x: Int, y: Int) = 
+ val ptA = toStr(x)
+ val ptB = toStr(y) 
+ "point " + ptA + ":" + ptB 
+ 
+def describe(value: Int | String | Point): String =
+ value match 
+  case 0 => "zero" 
+  case n: Int if n > 0 => "positive" 
+  case text: String => text 
+  case Point(a, b) => pointToStr(a, b)
+  case _ => "negative"
