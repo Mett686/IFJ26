@@ -4,6 +4,13 @@
 typedef struct htabItem {
   char* key;
   uint32_t hash;
+  int nested;
+  char *string;
+  bool isMutable;
+  bool isFunction;
+  int paramCount;
+  int *paramTypes;
+  int returnType;
   char data[];
 } htabItem_t;
 
@@ -14,6 +21,7 @@ typedef struct htab {
   size_t itemSize;
   size_t dataSize;
   htabItem_t* table;
+  struct htab *parent;
 } htab_t;
 
 // Creates and initializes table
@@ -33,4 +41,4 @@ htabItem_t* htabWrite(htab_t* t, char* key, void* data);
 htabItem_t* htabWriteNew(htab_t* t, char* key, void* data);
 
 // Returns pointer to data of given key
-void* htabGet(htab_t* t, char* key);
+htabItem_t* htabGet(htab_t* t, char* key);
