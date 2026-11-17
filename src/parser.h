@@ -5,16 +5,42 @@
 #include <stdbool.h>
 
 typedef enum{
-NT_Nothink,
-NT_Program,
-NT_Prolog,NT_DefList,
-NT_FuncList, NT_ParametList, NT_Paramet,
-NT_Type, NT_Body, NT_StatementList, NT_Statement,
-NT_ValInitial, NT_VarIniatial, NT_If_statement, NT_ElsePart,
-NT_Branch, NT_WhileLoop, NT_LoopBody, NT_Block, NT_StatementRest, 
-NT_ArgumentList, NT_ArgumentRest, NT_Between, NT_ParametListRest,
-NT_ReturnRest
-}NonTerminal;
+NODE_PROGRAM,
+NODE_PROLOG,
+NODE_DEFINITION_LIST,
+NODE_FUNC_DEF,
+NODE_PARAMET_LIST,
+NODE_PARAMET,
+NODE_TYPE,
+NODE_BODY,
+NODE_STATEMENT_LIST,
+NODE_STATEMENT,
+NODE_VAL_INICIAL,
+NODE_VAR_INICIAL,
+NODE_OPT_EOL,
+NODE_IF_STATEMENT,
+NODE_ELSE_PART,
+NODE_WHILE_LOOP,
+NODE_OPT_TYPE,
+NODE_BLOCK,
+NODE_STATEMENT_REST,
+NODE_ARGUMENT_LIST_REST,
+NODE_BETWEEN,
+NODE_PARAMET_LIST_REST,
+NODE_RETURN_REST,
+NODE_STATEMENT_REST
+}Node_type;
+
+typedef struct AST_Node_t{
+    Node_type type;
+    AST_Node *next;
+    AST_Node *left;
+    AST_Node *right;
+
+}AST_Node;
+
+AST_Node* AST_inicial();
+
 
 
 
