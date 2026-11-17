@@ -5,14 +5,13 @@
 #include <assert.h>
 
 
-#include "../src/htab.h"
-#include "../src/abtDecoding.h"
+#include "../src/htab_private.h"
 
 int main() {
     printf("  [TEST] htabCreate...\n");
     htab_t* table = htabCreate(5, sizeof(int));
     assert(table != NULL);
-    assert(table->capacity == 5);
+    assert(table->capacity > 5);
     assert(table->size == 0);
     assert(table->dataSize == sizeof(int));
 

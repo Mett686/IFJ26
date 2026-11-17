@@ -20,5 +20,6 @@ htabItem_t* htabFindKey(htab_t* t, char* key);
 
 htabItem_t* htabWrite(htab_t* t, char* key, void* data);
 htabItem_t* htabWriteNew(htab_t* t, char* key, void* data);
-void* htabGet(htab_t* t, char* key);
+htabItem_t* htabGet(htab_t* t, char* key);
+uint32_t findCapacity(uint32_t size);
 htabItem_t* htabResize(htab_t* t, uint32_t capacity);
