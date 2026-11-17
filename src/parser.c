@@ -27,7 +27,7 @@ void parser_prolog(FILE* stream ){
     token_t token = getToken(stream);
 
     if(token.type == TKN_IFJ26dot_asterisk){
-        
+
         token = getToken(stream);
         if (token.type == TKN_NEWLINE){
 
@@ -42,11 +42,11 @@ void parser_definitionList(FILE* stream ,token_t token){
     while(token.type != TKN_EOF){
         if(token.type == TKN_DEF){
 
-            parser_defFunction(stream);
+            parser_defFunction(stream,&token);
 
         }else if(token.type == TKN_AT_MAIN){
             
-            parser_defMainFunc(stream);
+            parser_defMainFunc(stream,&token);
     
         }else{//TODO ERROR
         break;
@@ -57,30 +57,30 @@ void parser_definitionList(FILE* stream ,token_t token){
         
 }
 
-void parser_defFunction(FILE*stream){
+void parser_defFunction(FILE*stream,token_t *token){
 
-    token_t token = getToken(stream);
+     *token = getToken(stream);
 
-    if(token.type == TKN_ID){
-        token = getToken(stream);
+    if(token->type == TKN_ID){
+        *token = getToken(stream);
 
-        if(token.type == TKN_OPENING_PARENTHESES){
+        if(token->type == TKN_OPENING_PARENTHESES){
 
-            parser_parametList(stream);
-            token = getToken(stream);
+            parser_parametList(stream,token);
             
-            if (token.type == TKN_CLOSING_PARENTHESES){
-                token = getToken(stream);
             
-                if(token.type ==TKN_COLON ){
-                    parser_type(stream);
-                    token = getToken(stream);
-                    if (token.type == TKN_ASSING){
-                        parser_body(stream);
+            if (token->type == TKN_CLOSING_PARENTHESES){
+                *token = getToken(stream);
+            
+                if(token->type ==TKN_COLON ){
+                    parser_type(stream,token);
+                    *token = getToken(stream);
+                    if (token->type == TKN_ASSING){
+                        parser_body(stream,token);
                     }
                 }
-                else if(token.type == TKN_ASSING){
-                    parser_body(stream);
+                else if(token->type == TKN_ASSING){
+                    parser_body(stream,token);
 
                 }             
             }
@@ -92,32 +92,32 @@ void parser_defFunction(FILE*stream){
 
 }
 
-void parser_defMainFunc(FILE* stream){
-    token_t token = getToken(stream);
+void parser_defMainFunc(FILE* stream,token_t *token){
+    *token = getToken(stream);
 
-    if (token.type == TKN_NEWLINE){
-        token = getToken(stream);
+    if (token->type == TKN_NEWLINE){
+        *token = getToken(stream);
         
-        if(token.type == TKN_DEF){
-        token = getToken(stream);
+        if(token->type == TKN_DEF){
+        *token = getToken(stream);
 
-            if(token.type == TKN_ID){
-                token=getToken(stream);
+            if(token->type == TKN_ID){
+                *token=getToken(stream);
 
-                if(token.type == TKN_OPENING_PARENTHESES){
-                    parser_parametList(stream);
-                    token = getToken(stream);
+                if(token->type == TKN_OPENING_PARENTHESES){
+                    parser_parametList(stream,token);
+                    
 
-                    if(token.type == TKN_CLOSING_PARENTHESES){
-                        token = getToken(stream);
+                    if(token->type == TKN_CLOSING_PARENTHESES){
+                        *token = getToken(stream);
 
-                        if(token.type == TKN_COLON){
-                            parser_type(stream);
+                        if(token->type == TKN_COLON){
+                            parser_type(stream,token);
                             
-                            token = getToken(stream);
+                            *token = getToken(stream);
 
-                            if(token.type == TKN_ASSING){
-                                parse_body(stream);
+                            if(token->type == TKN_ASSING){
+                                parse_body(stream,token);
                             }
 
                         }
@@ -129,26 +129,26 @@ void parser_defMainFunc(FILE* stream){
 
         }
     }
-    else if(token.type == TKN_DEF){
-        token = getToken(stream);
+    else if(token->type == TKN_DEF){
+        *token = getToken(stream);
 
-        if(token.type == TKN_ID){
-            token=getToken(stream);
+        if(token->type == TKN_ID){
+            *token=getToken(stream);
 
-            if(token.type == TKN_OPENING_PARENTHESES){
-                parser_parametList(stream);
-                token = getToken(stream);
+            if(token->type == TKN_OPENING_PARENTHESES){
+                parser_parametList(stream,token);
+                
 
-                if(token.type == TKN_CLOSING_PARENTHESES){
-                    token = getToken(stream);
+                if(token->type == TKN_CLOSING_PARENTHESES){
+                    *token = getToken(stream);
 
-                    if(token.type == TKN_COLON){
-                        parser_type(stream);
+                    if(token->type == TKN_COLON){
+                        parser_type(stream,token);
                             
-                        token = getToken(stream);
+                        *token = getToken(stream);
 
-                        if(token.type == TKN_ASSING){
-                            parse_body(stream);
+                        if(token->type == TKN_ASSING){
+                            parse_body(stream,token);
                         }
 
                     }
@@ -164,10 +164,10 @@ void parser_defMainFunc(FILE* stream){
 
 }
 
-void parser_type(FILE*stream){
-    token_t token = getToken(stream);
+void parser_type(FILE*stream,token_t *token){
+    *token = getToken(stream);
 
-    switch (token.type){
+    switch (token->type){
         case TKN_INT_KEYWORD:
         case TKN_DOUBLE_KEYWORD:
         case TKN_UNIT:
@@ -182,34 +182,36 @@ void parser_type(FILE*stream){
 
 }
 
-void parser_body(FILE*stream){
-    token_t token = getToken(stream);
+void parser_body(FILE*stream,token_t *token){
+    *token = getToken(stream);
 
-    if(token.type == TKN_NEWLINE){
-        parser_block(stream);
+    if(token->type == TKN_NEWLINE){
+        parser_block(stream,token);
 
-    }
+    }/*
     else if(token.type == TKN_IF){
         parser_ifStatement(stream);
-
-    }
-    else if(token.type == TKN_ID||token.type == TKN_MINUS || token.type == TKN_OPENING_PARENTHESES || token.type == TKN_INT||token.type == TKN_DOUBLE|| token.type == TKN_UNIT || token.type == TKN_STRING){ 
+    }*/
+    else if(token->type == TKN_ID||token->type == TKN_MINUS || token->type == TKN_OPENING_PARENTHESES || token->type == TKN_INT||token->type == TKN_DOUBLE|| token->type == TKN_UNIT || token->type == TKN_STRING){ 
         parser_expretion(stream,token);
-        token = getToken(stream);
-        if(token.type != TKN_NEWLINE){
+        *token = getToken(stream);
+        if(token->type != TKN_NEWLINE){
             //TODO ERROR
         }
 
     }
+    else {
+        //TODO ERROR
+    }
 }
 
-void parser_block(FILE* stream){
-    token_t token = getToken(stream);
+void parser_block(FILE* stream,token_t *token){
+    *token = getToken(stream);
 
-    if (token.type == TKN_INDENTATION){
-        parser_statementList(stream);
-        token = getToken(stream);
-        if(token.type!=TKN_DEDENTATION){
+    if (token->type == TKN_INDENTATION){
+        parser_statementList(stream,token);
+        *token = getToken(stream);
+        if(token->type!=TKN_DEDENTATION){
             //TODO ERROR
         }
     }else{
@@ -218,24 +220,24 @@ void parser_block(FILE* stream){
 }
     
 
-void parser_statementList(FILE* stream){
-    token_t token = getToken(stream);
+void parser_statementList(FILE* stream,token_t *token){
+    *token = getToken(stream);
 
-    while(token.type != TKN_DEDENTATION && token.type != TKN_EOF){
-        switch (token.type){
+    while(token->type != TKN_DEDENTATION && token->type != TKN_EOF){
+        switch (token->type){
             case TKN_VAL:
-                parser_valDef(stream);
+                parser_valDef(stream,token);
                 parser_between(stream,token);
             break;
             case TKN_VAR:
-                parser_varDef(stream);
+                parser_varDef(stream,token);
                 parser_between(stream,token);
             break;
             case TKN_IF:
-                parser_ifStatement(stream);
+                parser_ifStatement(stream,token);
             break;
             case TKN_WHILE:
-                parser_whileLoop(stream);
+                parser_whileLoop(stream,token);
             break;
             case TKN_ID:
                 parser_statementRest(stream,token);
@@ -256,19 +258,19 @@ void parser_statementList(FILE* stream){
                 parser_expretion(stream,token);
             break;
             case TKN_RETURN:
-                parser_returnRest(stream);
+                parser_returnRest(stream,token);
                 parser_between(stream,token);
             break;
             default:
                 //TODO ERROR
             break;
         } 
-        token = getToken(stream);
+        *token = getToken(stream);
     }
 }
 
-void parser_between(FILE* stream,token_t token){
-    switch (token.type){
+void parser_between(FILE* stream,token_t *token){
+    switch (token->type){
 
         case TKN_NEWLINE:
         break;
@@ -283,12 +285,12 @@ void parser_between(FILE* stream,token_t token){
     }
 }
 
-void parser_valDef(FILE*stream){
-    token_t token = getToken(stream);
-    if (token.type == TKN_ID){
+void parser_valDef(FILE*stream,token_t *token){
+    *token = getToken(stream);
+    if (token->type == TKN_ID){
         parser_optType(stream,token);
-        token = getToken(stream);
-        if(token.type == TKN_ASSING){
+        *token = getToken(stream);
+        if(token->type == TKN_ASSING){
             parser_expretion(stream,token);
         }
     }else{
@@ -296,19 +298,19 @@ void parser_valDef(FILE*stream){
     }
 }
 
-void parser_optType(FILE* stream,token_t token){
-    if(token.type == TKN_COLON){
-       parser_type(stream);
+void parser_optType(FILE* stream,token_t *token){
+    if(token->type == TKN_COLON){
+       parser_type(stream,token);
        
     }
 }
 
-void parser_varDef (FILE* stream){
-    token_t token = getToken(stream);
-    if (token.type == TKN_ID){
+void parser_varDef (FILE* stream,token_t *token){
+    *token = getToken(stream);
+    if (token->type == TKN_ID){
         parser_optType(stream,token);
-        token = getToken(stream);
-        if(token.type == TKN_ASSING){
+        *token = getToken(stream);
+        if(token->type == TKN_ASSING){
             parser_expretion(stream,token);
         }
     }else{
@@ -316,24 +318,26 @@ void parser_varDef (FILE* stream){
     }
 }
 
-void parser_ifStatement (FILE* stream){
-    token_t token = getToken(stream);
+void parser_ifStatement (FILE* stream,token_t *token){
+    *token = getToken(stream);
+    
     parser_expretion(stream,token);
-    if (token.type == TKN_THEN){
-        parser_body(stream);
-        parser_elsePart(stream);
+    
+    if (token->type == TKN_THEN){
+        parser_body(stream,token);
+        parser_elsePart(stream,token);
     }else{
         //TODO ERROR
     }
 }
 
-void parser_elsePart(FILE* stream){
-    token_t token= getToken(stream);
-    switch(token.type){
+void parser_elsePart(FILE* stream,token_t *token){
+    *token= getToken(stream);
+    switch(token->type){
         case TKN_ELSE:
-            parser_body(stream);
+            parser_body(stream,token);
         break;
-        case TKN_NEWLINE:
+       /*BOOLthen  case TKN_NEWLINE:
         case TKN_VAL:
         case TKN_VAR:
         case TKN_IF:
@@ -348,7 +352,7 @@ void parser_elsePart(FILE* stream){
         case TKN_OPENING_PARENTHESES:
         case TKN_RETURN:
         case TKN_EOF:
-        break;
+        break;*/
         default:
         //TODO ERROR
         break;
@@ -356,20 +360,20 @@ void parser_elsePart(FILE* stream){
 
 }
 
-void parser_whileLoop(FILE* stream){
-    token_t token = getToken(stream);
+void parser_whileLoop(FILE* stream,token_t *token){
+    *token = getToken(stream);
     parser_expretion(stream,token);
-    if(token.type == TKN_DO){
-        parser_body(stream);
+    if(token->type == TKN_DO){
+        parser_body(stream,token);
     }else{
         //TODO ERROR
     }
 
 }
 
-void parser_returnRest(FILE* stream){
-    token_t token = getToken(stream);
-    switch (token.type){
+void parser_returnRest(FILE* stream,token_t *token){
+    *token = getToken(stream);
+    switch (token->type){
         case TKN_ID:
         parser_expretion(stream,token);
         break;
@@ -396,51 +400,51 @@ void parser_returnRest(FILE* stream){
     }
 }
 
-void parser_parametList(FILE*stream){
-    token_t token =getToken(stream);
+void parser_parametList(FILE*stream,token_t *token){
+    *token =getToken(stream);
     
-    if(token.type == TKN_ID){
-        parser_paramet(stream);
-        parser_parametListRest(stream);
+    if(token->type == TKN_ID){
+        parser_paramet(stream,token);
+        parser_parametListRest(stream,token);
     }
-    else if(token.type == TKN_CLOSING_PARENTHESES){
+    else if(token->type == TKN_CLOSING_PARENTHESES){
 
     }else{
         //TODO ERROR
     }
 }
 
-void parser_paramet(FILE*stream){
-    token_t token =getToken(stream);
-    if(token.type == TKN_COLON){
-        parser_type(stream);
+void parser_paramet(FILE*stream,token_t *token){
+    *token =getToken(stream);
+    if(token->type == TKN_COLON){
+        parser_type(stream,token);
     }else{
         //TODO ERROR
     }
 }
 
-void parser_parametListRest(FILE*stream){
-    token_t token = getToken(stream);
+void parser_parametListRest(FILE*stream,token_t *token){
+    *token = getToken(stream);
 
-    while(token.type!=TKN_CLOSING_PARENTHESES){
+    while(token->type!=TKN_CLOSING_PARENTHESES){
 
-        if(token.type == TKN_COMMA){
-            token_t token = getToken(stream);
-            if(token.type==TKN_ID){
-                parser_paramet(stream);
+        if(token->type == TKN_COMMA){
+            *token = getToken(stream);
+            if(token->type==TKN_ID){
+                parser_paramet(stream,token);
             }
         }else{
             //TODO ERROR
             break;
         }
-        token = getToken(stream);
+        *token = getToken(stream);
     }
 }
 
-void parser_statementRest(FILE*stream,token_t token){
-    if(token.type == TKN_ID){
-        token = getToken(stream);
-        switch(token.type){
+void parser_statementRest(FILE*stream,token_t *token){
+    if(token->type == TKN_ID){
+        *token = getToken(stream);
+        switch(token->type){
             case TKN_MINUS:
             case TKN_DIVISION_SLASH:
             case TKN_TIMES:
@@ -454,7 +458,7 @@ void parser_statementRest(FILE*stream,token_t token){
                 parser_expretion(stream,token);
                 break;
             case TKN_OPENING_PARENTHESES:
-                parser_argumentList(stream);
+                parser_argumentList(stream,token);
                 break;
             case TKN_NEWLINE:
             case TKN_DEDENTATION:
@@ -470,10 +474,10 @@ void parser_statementRest(FILE*stream,token_t token){
     }
 }
 
-void parser_argumentList(FILE*stream){
-    token_t token = getToken(stream);
+void parser_argumentList(FILE*stream,token_t *token){
+    *token = getToken(stream);
 
-    switch (token.type){
+    switch (token->type){
         case TKN_ID:
         case TKN_MINUS:
         case TKN_OPENING_PARENTHESES:
@@ -482,7 +486,7 @@ void parser_argumentList(FILE*stream){
         case TKN_UNIT:
         case TKN_STRING:
             parser_expretion(stream,token);
-            parser_argumentListRest(stream);
+            parser_argumentListRest(stream,token);
             break;
         case TKN_CLOSING_PARENTHESES:
             break;
@@ -492,13 +496,13 @@ void parser_argumentList(FILE*stream){
     }
 }
 
-void parser_argumentListRest(FILE* stream){
-        token_t token = getToken(stream);
-        if(token.type == TKN_COMMA){
-            token = getToken(stream);
+void parser_argumentListRest(FILE* stream,token_t *token){
+        *token = getToken(stream);
+        if(token->type == TKN_COMMA){
+            *token = getToken(stream);
             parser_expretion(stream,token);
-            parser_argumentListRest(stream);
-        }else if(token.type == TKN_CLOSING_PARENTHESES){
+            parser_argumentListRest(stream,token);
+        }else if(token->type == TKN_CLOSING_PARENTHESES){
 
         }else{
             //TODO ERROR
