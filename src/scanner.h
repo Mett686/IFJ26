@@ -4,8 +4,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-token_t getToken(FILE* stream);
-
 typedef enum {
     ST_START,
     ST_INDENTATION,
