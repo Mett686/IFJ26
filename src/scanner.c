@@ -103,8 +103,6 @@ token_t getToken(FILE* stream) {
                 while ((0 <= (c = getc(stream)) && c <= 32) || c == 127) {;} // ignoring whitespaces
                 EOF_AND_OUT_OF_ASCII_CHECK
                 if (c != 10) {free(string.str); exit(1);} //LEX ERR 1
-                token.type = TKN_NEWLINE; //TODO spíš ignor?
-                foundToken = true;
                 break;
             }
             while (c == ' '){
@@ -113,14 +111,10 @@ token_t getToken(FILE* stream) {
             }
             EOF_AND_OUT_OF_ASCII_CHECK
             if (c == 10){
-                token.type = TKN_NEWLINE;
-                foundToken = true;
                 state = ST_INDENTATION;
                 break;
             }
             ungetc(c, stream);
-            state = ST_START;
-
             if (spaces != indentationStack.stack[indentationStack.top]){
                 if (spaces > indentationStack.stack[indentationStack.top]){
                     push(&indentationStack, spaces);
