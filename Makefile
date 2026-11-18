@@ -8,8 +8,12 @@ build:
 src/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-scannertest: src/scanner.o src/scanner_tester.o #https://share.gemini.google/axGqUMS7ohMQ
-	$(CC) $(CFLAGS) src/scanner.o src/scanner_tester.o -o scanner_test $(LDLIBS)
+tests/scanner_tester.o: tests/scanner_tester.c
+	$(CC) $(CFLAGS) -c $< -o $@	
+
+
+scannertest: src/scanner.o tests/scanner_tester.o #https://share.gemini.google/axGqUMS7ohMQ
+	$(CC) $(CFLAGS) src/scanner.o tests/scanner_tester.o -o scanner_test $(LDLIBS)
 
 clean:
 	-del /q .\tests\IFJ26codeExamples\*output.txt

@@ -52,10 +52,10 @@ switch (token->type) //https://share.gemini.google/exHWaq43ZcTA
         fprintf(outputFile, "[String, ] ");
         break;
     case TKN_STRING:
-        fprintf(outputFile, "[string_lit, \"%s\"] ", token->string);
+        fprintf(outputFile, "[string_lit, {{{%s}}}] ", token->string);
         break;
     case TKN_MULTILINE_STRING:
-        fprintf(outputFile, "[multiline_string, \"\"\"%s\"\"\"] ", token->string);
+        fprintf(outputFile, "[multiline_string, {%s}] ", token->string);
         break;
     case TKN_VAL:
         fprintf(outputFile, "[val, ] ");
