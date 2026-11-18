@@ -9,7 +9,7 @@
 #define OFFSET_BASIS 2166136261u
 #define PRIMES_COUNT 27
 #define PRIMES_VALUES { \
-  37, 79, 163, 331, 673, 1361, 2729, 5471, 10949, \
+  7, 17, 37, 79, 163, 331, 673, 1361, 2729, 5471, 10949, \
   21911, 43853, 87719, 175447, 350899, 701819, 1403641, \
   2807303, 5614657, 11229331, 22458671, 44917381, 89834777, \
   179669557, 359339171, 718678369, 1437356741, 2874713497 \
@@ -149,8 +149,10 @@ uint32_t findCapacity(uint32_t size) {
   return size += (size % 1) + 1; // return bigger odd nuber when prime lookup fails
 }
 
+// resizes table to closest bigger prime
+// when resizing to smaller table needs half of the space to be empty
 htabItem_t* htabResize(htab_t* t, uint32_t size) {
-  if(size <= t->capacity) return NULL;
+  if(size < t->size<<1) return NULL;
 
   uint32_t capacity = findCapacity(size);
   uint32_t threshold = (capacity*3)>>2;
