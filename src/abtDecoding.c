@@ -20,7 +20,7 @@ static void blockCheck(const char* op, char* varName, tnode* parent, htab_t* glo
             fprintf(stderr, "semanticická analýza: nepovolená redefinice funkce, proměnné, typu. \n");
             exit(4);
         }
-        htabItem_t *varData = htabWriteNew(localHashTable, varName, NULL);
+        htabItem_t *varData = htabWriteNew(localHashTable, varName);
         varData->isMutable = parent->isVar;
         varData->isFunction = false;
         varData->paramCount = 0;
@@ -170,7 +170,7 @@ static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable,
                     exit(6);
                 }
             }
-            htabItem_t *varData = htabWriteNew(hashTable, varName, NULL);
+            htabItem_t *varData = htabWriteNew(hashTable, varName);
             varData->isFunction = false;
             varData->isMutable = parent->isVar;
             varData->paramCount = 0;
@@ -209,7 +209,7 @@ static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable,
                     paramNode = paramNode->right;
                 }
             }
-            htabItem_t *funcData = htabWriteNew(hashTable, funcName, NULL);
+            htabItem_t *funcData = htabWriteNew(hashTable, funcName);
             funcData->isFunction = true;
             funcData->paramCount = count;
             funcData->paramTypes = typesArray;
@@ -255,10 +255,10 @@ static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable,
         {
             *inBlock = 1;
             if (*localHashTable == NULL){
-                *localHashTable = htabCreate(503, 0);
+                *localHashTable = htabCreate(503);
                 (*localHashTable)->parent = NULL;
             } else {
-                htab_t* newScope = htabCreate(503, 0);
+                htab_t* newScope = htabCreate(503);
                 newScope->parent = *localHashTable;
                 *localHashTable = newScope;
             }          

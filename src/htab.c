@@ -28,12 +28,11 @@ uint32_t hashFunction(char* key, uint32_t offset) {
 
 // Creates and initializes table
 // n is the capacity, table is allocate ~2times bigger
-htab_t* htabCreate(uint32_t n, size_t dataSize) {
+htab_t* htabCreate(uint32_t n) {
   htab_t* t = malloc(sizeof(htab_t));
   if(t) {
-    size_t itemSize = dataSize + sizeof(htabItem_t);
     uint32_t capacity = findCapacity(n);
-    t->table = malloc(capacity * itemSize);
+    t->table = malloc(capacity * sizeof(htabItem_t));
     if(!t->table) {
       free(t);
       return NULL;
@@ -41,12 +40,9 @@ htab_t* htabCreate(uint32_t n, size_t dataSize) {
     t->capacity = capacity;
     t->size = 0;
     t->threshold = (capacity*3)>>2;
-    t->itemSize = itemSize;
-    t->dataSize = dataSize;
-    htabItem_t* item = t->table;
+    t->parent = NULL;
     for(uint32_t i = 0; i < capacity; i++) {
-      item->key = NULL;
-      item = (htabItem_t*)((char*)item + itemSize);
+      memset(&t->table[i], 0, sizeof(htabItem_t));
     }
   }
   return t;
@@ -54,40 +50,27 @@ htab_t* htabCreate(uint32_t n, size_t dataSize) {
 
 // Wipes table clean
 void htabWipe(htab_t* t) {
-  htabItem_t* item = t->table;
   for(uint32_t i = 0; i < t->capacity; i++) {
-    free(item->key);
-    item->key = NULL;
-    item = (htabItem_t*)((char*)item + t->itemSize);
+    free(t->table[i].key);
+    memset(&t->table[i], 0, sizeof(htabItem_t));
   }
   t->size = 0;
 }
 
 // Destroys table
 void htabDestroy(htab_t* t) {
-  htabItem_t* item = t->table;
   for(uint32_t i = 0; i < t->capacity; i++) {
-    free(item->key);
-    item = (htabItem_t*)((char*)item + t->itemSize);
+    free(t->table[i].key);
   }
   free(t->table);
   free(t);
-}
-
-// Executes f on each item in table (empty included)
-void htabForEach(htab_t* t, void (*f)(htabItem_t* item)) {
-  htabItem_t* item = t->table;
-  for(uint32_t i = 0; i < t->capacity; i++) {
-    f(item);
-    item = (htabItem_t*)((char*)item + t->itemSize);
-  }
 }
 
 // Returns pointer to item with given index
 htabItem_t* htabFindIdx(htab_t* t, uint32_t i) {
   htabItem_t* item = NULL;
   if(i < t->capacity) {
-    item = (htabItem_t*)((char*)t->table + i*t->itemSize);
+    item = &t->table[i];
   }
   return item;
 }
@@ -95,14 +78,14 @@ htabItem_t* htabFindIdx(htab_t* t, uint32_t i) {
 // Returns pointer to item with given key or first empty
 htabItem_t* htabFindKey(htab_t* t, char* key) {
   const uint32_t h = hashFunction(key, OFFSET_BASIS);
-  htabItem_t* item = htabFindIdx(t, h % t->capacity);
+  htabItem_t* item = &t->table[h % t->capacity];
 
   // if match is not found look further
   if(item->key && strcmp(key, item->key)) {
     uint32_t newHash = h;
     do {
       newHash = hashFunction(key, newHash);
-      item = htabFindIdx(t, newHash % t->capacity);
+      item = &t->table[newHash % t->capacity];
     } while(item->key && strcmp(key, item->key));
   }
   return item;
@@ -110,7 +93,7 @@ htabItem_t* htabFindKey(htab_t* t, char* key) {
 
 // Writes data to table, overwrites existing entries
 // exits on fail
-htabItem_t* htabWrite(htab_t* t, char* key, void* data) {
+htabItem_t* htabWrite(htab_t* t, char* key) {
   htabItem_t* item = htabFindKey(t, key);
   if(!item->key) {
     // doble size when full
@@ -126,14 +109,13 @@ htabItem_t* htabWrite(htab_t* t, char* key, void* data) {
     item->hash = hashFunction(key, OFFSET_BASIS);
     t->size++;
   }
-  memcpy(item->data, data, t->dataSize);
   return item;
 }
 
 // Writes data to table
 // returns NULL if entry already exists
 // exits on fail
-htabItem_t* htabWriteNew(htab_t* t, char* key, void* data) {
+htabItem_t* htabWriteNew(htab_t* t, char* key) {
   htabItem_t* item = htabFindKey(t, key);
   if(item->key) return NULL;
   // double size when full
@@ -148,11 +130,10 @@ htabItem_t* htabWriteNew(htab_t* t, char* key, void* data) {
   strcpy(item->key, key);
   item->hash = hashFunction(key, OFFSET_BASIS);
   t->size++;
-  memcpy(item->data, data, t->dataSize);
   return item;
 }
 
-// Returns pointer to data of given key
+// Returns pointer to item with given key
 htabItem_t* htabGet(htab_t* t, char* key) {
   htabItem_t* item = htabFindKey(t, key);
   // Check if the cell is empty
@@ -169,34 +150,37 @@ uint32_t findCapacity(uint32_t size) {
 }
 
 htabItem_t* htabResize(htab_t* t, uint32_t size) {
+  if(size <= t->capacity) return NULL;
+
   uint32_t capacity = findCapacity(size);
   uint32_t threshold = (capacity*3)>>2;
 
-  htab_t* new = htabCreate(capacity, t->dataSize);
+  htabItem_t* new = malloc(capacity*sizeof(htabItem_t));
   if(!new) exit(EXIT_FAILURE); // chyba ukoncit
+  for(uint32_t i = 0; i < capacity; i++) {
+    memset(&new[i], 0, sizeof(htabItem_t));
+  }
 
   // copy all items from old to new
-  htabItem_t* item = t->table;
   for(uint32_t i = 0; i < t->capacity; i++) {
-    if(item->key) {
+    htabItem_t* src = &t->table[i];
+    if(t->table[i].key) {
       // find new location
-      htabItem_t* dst = htabFindIdx(new, item->hash % capacity);
+      htabItem_t* dst = &new[src->hash % capacity];
       // if full rehash
       if(dst->key) {
-        uint32_t newHash = item->hash;
+        uint32_t newHash = src->hash;
         do {
-          newHash = hashFunction(item->key, newHash);
-          dst = htabFindIdx(new, newHash % capacity);
+          newHash = hashFunction(src->key, newHash);
+          dst = &new[newHash % capacity];
         } while(dst->key);
       }
-      memcpy(dst, item, t->itemSize);
+      memcpy(dst, src, sizeof(htabItem_t));
     }
-  item = (htabItem_t*)((char*)item + t->itemSize);
   }
   t->capacity = capacity;
   free(t->table);
-  t->table = new->table;
+  t->table = new;
   t->threshold = threshold;
-  free(new);
   return t->table;
 }

@@ -1,6 +1,13 @@
 // htab.h
 // Autor: Martin Knotek, FIT
 
+#ifndef HTAB_H
+#define HTAB_H
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
 typedef struct htabItem {
   char* key;
   uint32_t hash;
@@ -11,21 +18,18 @@ typedef struct htabItem {
   int paramCount;
   int *paramTypes;
   int returnType;
-  char data[];
 } htabItem_t;
 
 typedef struct htab {
-  uint32_t capacity;
-  uint32_t size;
-  uint32_t threshold;
-  size_t itemSize;
-  size_t dataSize;
+  uint32_t capacity;   // capacity of the table
+  uint32_t size;       // number of items in table
+  uint32_t threshold;  // when the table is too full
   htabItem_t* table;
   struct htab *parent;
 } htab_t;
 
 // Creates and initializes table
-htab_t* htabCreate(uint32_t n, size_t dataSize);
+htab_t* htabCreate(uint32_t n);
 
 // Wipes table clean
 void htabWipe(htab_t* t);
@@ -35,10 +39,12 @@ void htabDestroy(htab_t* t);
 
 // Writes data to table, overwrites existing entries
 // returns pointer to the written item
-htabItem_t* htabWrite(htab_t* t, char* key, void* data);
+htabItem_t* htabWrite(htab_t* t, char* key);
 
 // Inserts new key into htab, returns NULL if entry already exists
-htabItem_t* htabWriteNew(htab_t* t, char* key, void* data);
+htabItem_t* htabWriteNew(htab_t* t, char* key);
 
 // Returns pointer to data of given key
 htabItem_t* htabGet(htab_t* t, char* key);
+
+#endif
