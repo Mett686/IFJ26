@@ -161,6 +161,7 @@ token_t getToken(FILE* stream) {
             break;
         case ST_ZB_UNDERSCORE:
             if ('0' <= c && c <= '9') state = ST_ZERO_BEGINNING;
+            else if (c == '_') break;
             else {free(string.str); exit(1);} //LEX ERR 1 
             break;
         case ST_NONZERO_BEGINNING:
@@ -183,6 +184,7 @@ token_t getToken(FILE* stream) {
             break;
         case ST_NZB_UNDERSCORE:
             if ('0' <= c && c <= '9') state = ST_NONZERO_BEGINNING;
+            else if (c == '_') break;
             else {free(string.str); exit(1);} //LEX ERR 1 
             break;
         case ST_DOUBLE_DECIMAL_DOT:
@@ -219,6 +221,7 @@ token_t getToken(FILE* stream) {
             break;
         case ST_DP_UNDERSCORE:
             if ('0' <= c && c <= '9') state = ST_DECIMAL_PART;
+            else if (c == '_') break;
             else {free(string.str); exit(1);} //LEX ERR 1 
             break;
         case ST_INTEGER_PART:
@@ -238,6 +241,7 @@ token_t getToken(FILE* stream) {
             break;
         case ST_IP_UNDERSCORE:
             if ('0' <= c && c <= '9') state = ST_INTEGER_PART;
+            else if (c == '_') break;
             else {free(string.str); exit(1);} //LEX ERR 1 
             break;
         case ST_EXP_PREFIX:
@@ -284,6 +288,7 @@ token_t getToken(FILE* stream) {
                 state = ST_EXPONENT;
                 stringAppend(&string, c);
             }
+            else if (c == '_') break;
             else {free(string.str); exit(1);} //LEX ERR 1 
             break;
         case ST_DIVISION_SLASH:
@@ -393,33 +398,11 @@ token_t getToken(FILE* stream) {
             } 
             break;        
         case ST_EXT_UNDERSCORE:
-            if (c == '_') {
-                state = ST_ID_UNDERSCORES;
-                stringAppend(&string, c);
-            }
-            else if (('0' <= c && c <= '9')||('A' <= c && c <= 'Z')||('a' <= c && c <= 'z')) {
+            if (('0' <= c && c <= '9')||('A' <= c && c <= 'Z')||('a' <= c && c <= 'z')|| c == '_') {
                 state = ST_ID;
                 stringAppend(&string, c);
-            }
-            else {
+            } else {
                 token.type = TKN_EXT_UNDERSCORE;
-                foundToken = true;
-                state = ST_START;
-                ungetc(c, stream);
-            }
-            break;
-        case ST_ID_UNDERSCORES:
-            if (c == '_') {
-                stringAppend(&string, c);
-                break; //stays
-            }
-            else if (('0' <= c && c <= '9')||('A' <= c && c <= 'Z')||('a' <= c && c <= 'z')) {
-                state = ST_ID;
-                stringAppend(&string, c);
-            }
-            else {
-                token.type = TKN_ID;
-                token.string = string.str;
                 foundToken = true;
                 state = ST_START;
                 ungetc(c, stream);
