@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DEBUG 1
+//#define DEBUG 1
 #define STR_CMP(i, c) (string.str[i] == (c))
 #define TOKEN_FOUND_RETURN_TO_START(tkn) {foundToken = true; state = ST_START; token.type = tkn;}
 #define COMPARE_WITH_KEYWORD(keyword, tkn) if(!strcmp(string.str, #keyword)) TOKEN_FOUND_RETURN_TO_START(tkn) 
@@ -22,14 +22,14 @@ token_t getToken(FILE* stream) {
     if(indentationStack.stack == NULL){
         indentationStack.stack = (unsigned*)malloc(STACK_STARTING_CAPACITY);
         if(indentationStack.stack == NULL)
-            exit(-1);
+            exit(99);
         indentationStack.stack[0] = 0;
     }
     static unsigned toDedent = 0;
     string_t string = {.capacity = (unsigned)STRING_STARTING_CAPACITY, .length = 0, .str = NULL};
     string.str = (char*)malloc(STRING_STARTING_CAPACITY);
     if (string.str == NULL)
-        exit(-1); //TODO vnitřní err
+        exit(99); //TODO vnitřní err
     unsigned depthInParentheses = 0; //NL v závorkách se chová jako obyčejný whitespace
     int c;
     while (!foundToken) 
@@ -42,7 +42,7 @@ token_t getToken(FILE* stream) {
         }
         c = getc(stream);
 #ifdef DEBUG
-        printf("char: '%c',\t state: %d,\t %s\n", c, state, string.str);
+        fprintf(stderr, "char: '%c',\t state: %d,\t %s\n", c, state, string.str);
 #endif
         EOF_AND_OUT_OF_ASCII_CHECK
         switch (state) //https://share.gemini.google/zIizBiReNRVX
@@ -81,7 +81,6 @@ token_t getToken(FILE* stream) {
                 string.str[0] = '\0';
             }
             else if (c == '@'){
-                printf("add\n");
                 if (getc(stream) == 'm' &&
                     getc(stream) == 'a' &&
                     getc(stream) == 'i' &&
@@ -581,7 +580,7 @@ token_t getToken(FILE* stream) {
     if(token.type != TKN_ID && token.type != TKN_STRING && token.type != TKN_MULTILINE_STRING)
         free(string.str);
 #ifdef DEBUG
-        printf("token found: %d\n", token.type);
+        fprintf(stderr, "token found: %d\n", token.type);
 #endif
     return token;
 }
