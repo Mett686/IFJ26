@@ -1,10 +1,10 @@
 //autor: xmiklej00
 #include <stdio.h>
-#include <scanner.h>
 #include <stdbool.h>
-#include <parser.h>
 #include <stdlib.h>
-#include <stack.h>
+#include "parser.h"
+#include "scanner.h"
+#include "stack.h"
 
 void parser(FILE* stream);
 

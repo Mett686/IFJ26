@@ -1,6 +1,9 @@
 // scanner.h
 // Autor: Filip Maxa, FIT
 
+#ifndef SCANNER_H
+#define SCANNER_H
+
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -49,3 +52,5 @@ typedef struct {
 token_t getToken(FILE* stream);
 
 //https://share.gemini.google/2iSR6yQzxtX5 END OF LOOK–UP ARRAYS
+
+#endif

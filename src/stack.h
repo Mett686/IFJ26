@@ -1,6 +1,6 @@
 //autor: xmiklej00
 #include <stdio.h>
-#include <scanner.h>
+#include "scanner.h"
 #include <stdbool.h>
 
 typedef enum{
@@ -18,6 +18,6 @@ typedef struct Stack{
 }Stack;
 
 
-Stack * stack_iniciaize();
+Stack* stack_iniciaize();
 Stack* stack_push(Stack *stack,Symbol_Category category,Precedens_Symbol symbol, token_t *token);
 Stack* stack_pop(Stack *stack);

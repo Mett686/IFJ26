@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "scanner.h"
+#include "../src/scanner.h"
 
 void token_print(token_t* token, FILE* outputFile){
 switch (token->type) //https://share.gemini.google/exHWaq43ZcTA

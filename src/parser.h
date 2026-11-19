@@ -1,8 +1,8 @@
 
 //autor: xmiklej00
 #include <stdio.h>
-#include <scanner.h>
 #include <stdbool.h>
+#include "scanner.h"
 #include "ast.h"
 
 typedef enum{

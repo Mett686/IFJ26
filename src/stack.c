@@ -1,8 +1,8 @@
 //autor: xmiklej00
 #include <stdio.h>
-#include <stack.h>
-#include <scanner.h>
-#include <parser.h>
+#include "stack.h"
+#include "scanner.h"
+#include "parser.h"
 
 Stack * stack_iniciaize(){
     Stack *new_stack=calloc(1,sizeof(Stack));
