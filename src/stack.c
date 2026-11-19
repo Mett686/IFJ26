@@ -1,5 +1,6 @@
 //autor: xmiklej00
 #include <stdio.h>
+#include <stdlib.h>
 #include "stack.h"
 #include "scanner.h"
 #include "parser.h"

@@ -107,7 +107,7 @@ static void generate_node(const AST_Node* node)
       // pravy telo (statemet lsit)
       
       // pregenerace promennych
-      defvarPregen(node->right);
+      //defvarPregen(node->right);
       generateDEFVAR = false;
 
       fprintf(file, "LABEL $while$$start\n"); //TODO replace with ↓

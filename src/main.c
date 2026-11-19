@@ -12,9 +12,9 @@
 
 int main () {
     AST_Node* ast;
-    htab_t* htab;
+    htab_t* htab = htabCreate(300);
 
-    ast = AST_inicial();
+    ast = parser(stdin);
     semanticCheck(ast, htab);
     codeGenerate(stdout, ast);
     return 0;

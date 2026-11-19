@@ -20,7 +20,7 @@ static void blockCheck(const char* op, char* varName, AST_Node* parent, htab_t* 
             fprintf(stderr, "semanticická analýza: nepovolená redefinice funkce, proměnné, typu. \n");
             exit(4);
         }
-        htabItem_t *varData = htabWriteNew(localHashTable, varName, NULL);
+        htabItem_t *varData = htabWriteNew(localHashTable, varName);
         varData->isMutable = (parent->node_type == NODE_VAR_DEF);
         varData->isFunction = false;
         varData->paramCount = 0;
@@ -74,7 +74,7 @@ static void checkNode(AST_Node *parent, htab_t* hashTable, htab_t** localHashTab
     }
 
     switch (parent->node_type) {
-        case NODE_EXPRETION:
+        case NODE_EXP:
             switch (parent->operator_type) {
                 case OT_PLUS:
                     {
@@ -101,6 +101,7 @@ static void checkNode(AST_Node *parent, htab_t* hashTable, htab_t** localHashTab
                     break;
                 }
 
+                /*
                 case OT_MOD:
                 {
                     if (leftType == TYPE_INT && rightType == TYPE_INT) {
@@ -110,7 +111,8 @@ static void checkNode(AST_Node *parent, htab_t* hashTable, htab_t** localHashTab
                         exit(6);
                     }
                     break;
-                }    
+                }
+                */
 
                 case OT_EQUAL:
                 case OT_NOT_EQUAL:
@@ -213,7 +215,7 @@ static void checkNode(AST_Node *parent, htab_t* hashTable, htab_t** localHashTab
             }
             
 
-            htabItem_t *varData = htabWriteNew(hashTable, varName, NULL);
+            htabItem_t *varData = htabWriteNew(hashTable, varName);
             varData->isFunction = false;
             varData->isMutable = isMutable;
             varData->paramCount = 0;
@@ -281,7 +283,7 @@ static void checkNode(AST_Node *parent, htab_t* hashTable, htab_t** localHashTab
                     paramNode = paramNode->next;
                 }
             }
-            htabItem_t *funcData = htabWriteNew(hashTable, funcName, NULL);
+            htabItem_t *funcData = htabWriteNew(hashTable, funcName);
             funcData->isFunction = true;
             funcData->paramCount = count;
             funcData->paramTypes = typesArray;
@@ -290,7 +292,7 @@ static void checkNode(AST_Node *parent, htab_t* hashTable, htab_t** localHashTab
             break;
         }
 
-        case NODE_ASSIGNMENT:
+        case NODE_ASSIGN:
         {
             if (leftType != rightType) {
                 if (leftType == TYPE_DOUBLE && rightType == TYPE_INT){
@@ -323,7 +325,7 @@ static void checkNode(AST_Node *parent, htab_t* hashTable, htab_t** localHashTab
             break;
         }
 
-        case NODE_IF_STATEMENT:
+        case NODE_IF:
         case NODE_WHILE_LOOP:
         {
             if (leftType != TYPE_BOOL){
@@ -371,6 +373,7 @@ static void recursiveSemanticCheck(AST_Node *ptr, htab_t* hashTable, htab_t** lo
         *currentReturnType = ptr->data_type;
     }
 
+    /*
     if (ptr->node_type == NODE_BLOCK) {
         *inBlock = 1;
         if (*localHashTable == NULL){
@@ -382,7 +385,7 @@ static void recursiveSemanticCheck(AST_Node *ptr, htab_t* hashTable, htab_t** lo
             *localHashTable = newScope;
         }          
     }
-
+    
     recursiveSemanticCheck(ptr->left, hashTable, localHashTable, inBlock, currentReturnType, mainFuncCount);
     recursiveSemanticCheck(ptr->right, hashTable, localHashTable, inBlock, currentReturnType, mainFuncCount);
 
@@ -398,6 +401,7 @@ static void recursiveSemanticCheck(AST_Node *ptr, htab_t* hashTable, htab_t** lo
             *inBlock = 0;
         }
     }
+    */
 
     if (ptr->node_type == NODE_FUNC_DEF || ptr->node_type == NODE_FUNC_DEF_MAIN) {
         *currentReturnType = prevReturnType;

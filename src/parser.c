@@ -6,9 +6,7 @@
 #include "scanner.h"
 #include "stack.h"
 
-void parser(FILE* stream);
-
-AST_Node* AST_inicial(){
+AST_Node* AST_inicial(void){
     AST_Node *table = malloc(sizeof(AST_Node));
     if(table==NULL){
         free(table);
@@ -25,7 +23,7 @@ AST_Node* AST_inicial(){
 void create_node(Node_type type,AST_Node *node){
     AST_Node *new_node = malloc(sizeof(AST_Node));
     if(new_node==NULL){
-        return 1; 
+        return; 
     }
     node=new_node;
     node->node_type=type;
@@ -35,7 +33,7 @@ void create_node(Node_type type,AST_Node *node){
     
 }
 
-void parser(FILE* stream){
+AST_Node* parser(FILE* stream){
     AST_Node *tree = AST_inicial();
     token_t token = getToken(stream);
     
@@ -56,6 +54,7 @@ void parser(FILE* stream){
         //TODO ERROR
         exit(2);
     }
+    return tree;
 }
 
 void parser_prolog(FILE* stream,token_t *token ){

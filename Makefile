@@ -38,7 +38,7 @@ zip:
 	zip -r $(nazev).zip src/ dokumentace.pdf rozdeleni Makefile tests/
 
 clean:
-	rm -f $(OBJS) $(DEPS) tests/scanner_tester.o tests/scanner_tester.d compiler scanner_test $(nazev).zip
+	rm -f $(OBJS) $(DEPS) tests/scanner_tester.o tests/scanner_tester.d scanner_test $(nazev).zip
 
 -include $(DEPS) tests/scanner_tester.d
 
