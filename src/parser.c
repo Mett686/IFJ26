@@ -142,7 +142,7 @@ void parser_defFunction(FILE*stream,token_t *token,AST_Node*node){
                     parser_body(stream,token,node->right);
                 
                 }else{
-                    exir(2);
+                    exit(2);
                     //ERROR
                 }             
             }else{
