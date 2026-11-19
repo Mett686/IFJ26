@@ -186,7 +186,7 @@ void parser_defMainFunc(FILE* stream,token_t *token,AST_Node *node){
 
                         }else if (token->type == TKN_ASSING){
                             node->data_type=TYPE_NULL;
-                            parser_body(stream,token);
+                            parser_body(stream,token, node->right);
                         }else{
                             //ERROR
                         }
@@ -447,8 +447,7 @@ void parser_valDef(FILE*stream,token_t *token,AST_Node *node){
 
 void parser_optType(FILE* stream,token_t *token,AST_Node *node){
     if(token->type == TKN_COLON){
-       parser_type(stream,token,node);
-       
+        parser_type(stream,token,node);
     }
 }
 
@@ -495,7 +494,7 @@ void parser_elsePart(FILE* stream,token_t *token,AST_Node*node){
         case TKN_ELSE:
             parser_body(stream,token,node);
         break;
-       /*BOOLthen  case TKN_NEWLINE:
+        /*BOOLthen  case TKN_NEWLINE:
         case TKN_VAL:
         case TKN_VAR:
         case TKN_IF:
@@ -787,27 +786,26 @@ Precedence get_precedence(Precedence_Symbol stack_symbol,Precedence_Symbol comin
 
 void parser_expression(FILE*stream,token_t *token,AST_Node *node){
     Stack *stack = stack_initialize();
+    Precedence precedence;
     switch(token->type){
         case TKN_ID:
         case TKN_STRING:
         case TKN_INT:
         case TKN_DOUBLE:
         case TKN_UNIT:
-            Precedence precedence = get_precedence(PS_END,PS_ID);
+            precedence = get_precedence(PS_END,PS_ID);
             stack = stack_push(stack,STACK_TOKEN,precedence,token);
             break;
         case TKN_PLUS:
-            Precedence precedence = get_precedence(PS_END,PS_UNARYPLUS);
+            precedence = get_precedence(PS_END,PS_UNARYPLUS);
             stack = stack_push(stack,STACK_TOKEN,precedence,token);
             break;
         case TKN_MINUS:
-            Precedence precedence = get_precedence(PS_END,PS_UNARYMINUS);
+            precedence = get_precedence(PS_END,PS_UNARYMINUS);
             stack = stack_push(stack,STACK_TOKEN,precedence,token);
             break;
         default:
             //ERROR
         break;
     }
-    
-    
 }
