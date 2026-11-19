@@ -26,7 +26,7 @@ static void generate_node(const AST_Node* node)
       // jen vola generate_node na potomky
       // nejakej je def_list
       // chova se jako def list
-    case NODE_DEFINITION_LIST:
+    case NODE_DEF_LIST:
       // levy je nejaky def (? konstanty promenne)
       // pravy je node_def_list
       generate_node(node->left);
@@ -47,16 +47,12 @@ static void generate_node(const AST_Node* node)
       // return?
       fprintf(file, "POPFRAME\nRETURN\n");
       break;
-    case NODE_PARAMET:
+    case NODE_PARAM:
       // parametr
       // levy dalsi param
       fprintf(file, "DEFVAR LF@%s", node->name);
       fprintf(file, "POPS LF@%s", node->name);
       generate_node(node->left);
-      break;
-    case NODE_TYPE:
-      // nema potomky
-      // mby se nepouziva
       break;
     case NODE_STATEMENT_LIST:
       // levy podstrom statement, val, var, if, while, exp, return
@@ -77,10 +73,7 @@ static void generate_node(const AST_Node* node)
       // levy expression
       if(generateDEFVAR) fprintf(file, "DEFVAR %s@%s$%d\n", FR_S(frame), node->name, 0); //scope todo
       break;
-    case NODE_OPT_EOL:
-      // unused
-      break;
-    case NODE_IF_STATEMENT:
+    case NODE_IF:
       // levy exp
       // pravy telo (statemet lsit)
       // next je else !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -102,7 +95,7 @@ static void generate_node(const AST_Node* node)
       //konec a vycisteni stacku
       fprintf(file, "LABEL %s$IF$%d$end\n", functname, ifcnt);
       break;
-    case NODE_ELSE_PART:
+    case NODE_ELSE:
       // telo levy podstrom (statement list) ????????? proc ne statement lsit
       break;
     case NODE_WHILE_LOOP:
@@ -129,25 +122,16 @@ static void generate_node(const AST_Node* node)
       generateDEFVAR = true;
 
       break;
-    case NODE_OPT_TYPE:
-      // unused
-      break;
-    case NODE_BLOCK:
-      // unused
-      break;
-    case NODE_ARGUMENT_LIST:
+    case NODE_ARG_LIST:
       // levy exp, return ???????????????????????????
       // pravy arg_list
       generate_node(node->left);
       generate_node(node->right);
       break;
-    case NODE_BETWEEN:
-      // unused
-      break;
     case NODE_RETURN:
       // levy exp (musi doplnovat semAn)
       break;
-    case NODE_EXPRETION:
+    case NODE_EXP:
       // todo
       // synove val var exp
       break;

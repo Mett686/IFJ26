@@ -4,26 +4,43 @@
 #include <stdbool.h>
 
 typedef enum{
-NODE_PROGRAM,
-NODE_DEFINITION_LIST,
-NODE_FUNC_DEF,
-NODE_FUNC_DEF_MAIN,
-NODE_PARAMET,
-NODE_TYPE,
-NODE_STATEMENT_LIST,
-NODE_STATEMENT,
-NODE_VAL_DEF,
+NODE_PROGRAM, // --
+// left - nejaka def
+// right - DEF_LIST
+NODE_DEF_LIST, // --
+// left - nejaka def
+// right - DEF_LIST
+NODE_FUNC_DEF, // 
+// left - PARAM
+// right - STATEMENT_LIST
+NODE_FUNC_DEF_MAIN, // 
+// left - PARAM
+// right - STATEMENT_LIST
+NODE_PARAM, // 
+// left - PARAM
+NODE_STATEMENT_LIST, // -- 
+// left - FUNC_CALL, ASSIGN, VAL, VAR, IF, WHILE, EXP, RETURN
+// right - STATEMENT_LIST
+NODE_STATEMENT, // -- vyuziva pouze synAn
+NODE_VAL_DEF, // -- id
+// left - EXP
 NODE_VAR_DEF,
-NODE_OPT_EOL,
-NODE_IF_STATEMENT,
-NODE_ELSE_PART,
-NODE_WHILE_LOOP,
-NODE_OPT_TYPE,
-NODE_BLOCK,
-NODE_ARGUMENT_LIST,
-NODE_BETWEEN,
+// left - EXP
+NODE_IF, //
+// left - EXP
+// right - STATEMENT_LIST
+// next - ELSE
+NODE_ELSE, //
+// left - STATEMENT_LIST
+NODE_WHILE_LOOP, //
+// left - EXP
+// right - STATEMENT_LIST
+NODE_ARG_LIST, //
+// left - EXP
+// right - ARG_LIST
 NODE_RETURN,
-NODE_EXPRETION
+// left - EXP -- musi dopnovat semAn
+NODE_EXP // TODO
 }Node_type;
 
 typedef enum{
