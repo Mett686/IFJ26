@@ -1,12 +1,13 @@
-// ast.h
-// xmiklej00
+#ifndef AST_H
+#define AST_H
+
+#include <stdbool.h>
 
 typedef enum{
 NODE_PROGRAM,
 NODE_DEFINITION_LIST,
 NODE_FUNC_DEF,
 NODE_FUNC_DEF_MAIN,
-NODE_PARAMET_LIST,
 NODE_PARAMET,
 NODE_TYPE,
 NODE_STATEMENT_LIST,
@@ -19,12 +20,9 @@ NODE_ELSE_PART,
 NODE_WHILE_LOOP,
 NODE_OPT_TYPE,
 NODE_BLOCK,
-NODE_STATEMENT_REST,
 NODE_ARGUMENT_LIST,
 NODE_BETWEEN,
-NODE_PARAMET_LIST_REST,
 NODE_RETURN,
-NODE_STATEMENT_REST,
 NODE_EXPRETION
 }Node_type;
 
@@ -55,9 +53,9 @@ TYPE_NULL
 typedef struct AST_Node{
     Node_type node_type;
     Data_Type data_type;
-    AST_Node* next;
-    AST_Node* left;
-    AST_Node* right;
+    struct AST_Node* next;
+    struct AST_Node* left;
+    struct AST_Node* right;
 
     char *name;
 
@@ -67,4 +65,6 @@ typedef struct AST_Node{
     bool bool_value;
 
     Operator_type operator_type;
-}AST_Node_t;
+} AST_Node;
+
+#endif

@@ -1,0 +1,177 @@
+// codegen.c
+// Autor: Martin Knotek, FIT
+
+
+#include "codegen.h"
+#include <stdio.h>
+
+#define FR_S(frame) \
+  (frame == GF ? "GF" : (frame == TF ? "TF" : "LF"))
+
+static FILE* file;
+
+static void generate_node(const AST_Node* node)
+{
+  static Frame_t frame = GF;
+  static unsigned scopecnt = 0;
+  static bool generateDEFVAR = true;
+  if (node == NULL) {
+    return;
+  }
+  Frame_t prevFrame = frame;
+
+  switch (node->node_type) {
+    case NODE_PROGRAM:
+      // koren nedela nic protoze .IFJcode26 vypisuje codeGenerate
+      // jen vola generate_node na potomky
+      // nejakej je def_list
+      // chova se jako def list
+    case NODE_DEFINITION_LIST:
+      // levy je nejaky def (? konstanty promenne)
+      // pravy je node_def_list
+      generate_node(node->left);
+      generate_node(node->right);
+      break;
+    case NODE_FUNC_DEF_MAIN:
+      // definuje main funkci a jinak stejne jako func def
+      fprintf(file, "LABEL MAIN\n");
+    case NODE_FUNC_DEF:
+      // definuje funkci
+      // volanim na levy podstrom zapise parametry
+      // volanim na pravy podstrom zapise telo
+      int argcnt = 0;
+      fprintf(file, "LABEL %s$%d\n", node->name, argcnt);
+      fprintf(file, "CREATEFRAME\nPUSHFRAME\n");
+      generate_node(node->left);
+      generate_node(node->right);
+      // return?
+      fprintf(file, "POPFRAME\nRETURN\n");
+      break;
+    case NODE_PARAMET:
+      // parametr
+      // levy dalsi param
+      fprintf(file, "DEFVAR LF@%s", node->name);
+      fprintf(file, "POPS LF@%s", node->name);
+      generate_node(node->left);
+      break;
+    case NODE_TYPE:
+      // nema potomky
+      // mby se nepouziva
+      break;
+    case NODE_STATEMENT_LIST:
+      // levy podstrom statement, val, var, if, while, exp, return
+      // pravy statement_list
+      generate_node(node->left);
+      generate_node(node->right);
+      break;
+    case NODE_STATEMENT:
+      // id funkce nebo prirazeni
+      // jen levy podstrom arg_list, expression
+      // TODO
+      break;
+    case NODE_VAL_DEF:
+      // id
+      // levy expression
+    case NODE_VAR_DEF:
+      // id
+      // levy expression
+      if(generateDEFVAR) fprintf(file, "DEFVAR %s@%s$%d\n", FR_S(frame), node->name, 0); //scope todo
+      break;
+    case NODE_OPT_EOL:
+      // unused
+      break;
+    case NODE_IF_STATEMENT:
+      // levy exp
+      // pravy telo (statemet lsit)
+      // next je else !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      char* else_label = [funct_name]$IF$[ifnum]$else;
+      char* end_label = [funct_name]$IF$[ifnum]$end;
+      char* exp = node->left->name;
+
+      // vyhodnoceni podminky
+      generate_node(node->left);
+      fprintf(file, "PUSHS 0\n");
+      // if
+      fprintf(file, "JUMPIFEQS %s\n", else_label);
+      fprintf(file, "CLEARS\n");
+      //telo if
+      generate_node(node->right);
+      fprintf(file, "JUMP %s\n", end_label);
+      //telo else
+      fprintf(file, "LABEL %s", else_label);
+      fprintf(file, "CLEARS\n");
+      generate_node(node->next);
+      //konec a vycisteni stacku
+      fprintf(file, "LABEL %s", end_label);
+      break;
+    case NODE_ELSE_PART:
+      // telo levy podstrom (statement list) ????????? proc ne statement lsit
+      break;
+    case NODE_WHILE_LOOP:
+      // levy exp
+      // pravy telo (statemet lsit)
+      
+      // pregenerace promennych
+      defvarPregen(node->right);
+      generateDEFVAR = false;
+
+      fprintf(file, "LABEL %s$while$%d$start", func, whilcnt);
+      // vyhodnoceni podminky
+      generate_node(node->left);
+      fprintf(file, "PUSHS 0\n");
+      // podmineny skok
+      fprintf(file, "JUMPIFEQS %s$while$%d$end\n", func, whilecnt);
+      fprintf(file, "CLEARS\n");
+      // telo while bez defvar
+      generate_node(node->right);
+      fprintf(file, "JUMP %s$while$%d$start", func, whilcnt);
+      // konec
+      fprintf(file, "LABEL %s$while$%d$end\n", func, whilecnt);
+      fprintf(file, "CLEARS\n");
+      generateDEFVAR = true;
+
+      break;
+    case NODE_OPT_TYPE:
+      // unused
+      break;
+    case NODE_BLOCK:
+      // unused
+      break;
+    case NODE_ARGUMENT_LIST:
+      // levy exp, return ???????????????????????????
+      // pravy arg_list
+      generate_node(node->left);
+      generate_node(node->right);
+      break;
+    case NODE_BETWEEN:
+      // unused
+      break;
+    case NODE_RETURN:
+      // levy exp (musi doplnovat semAn)
+      break;
+    case NODE_EXPRETION:
+      // todo
+      // synove val var exp
+      break;
+  }
+
+  frame = prevFrame;
+  return;
+}
+
+bool codeGenerate(FILE *output, const AST_Node *root)
+{
+  if (output == NULL) {
+    fprintf(stderr, "codegen: output stream is required\n");
+    return false;
+  }
+  file = output;
+
+  if (fputs(".IFJcode26\n", output) == EOF) {
+    fprintf(stderr, "codegen: failed to write output\n");
+    return false;
+  }
+
+  generate_node(root);
+  return !ferror(output);
+}

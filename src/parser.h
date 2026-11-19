@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <scanner.h>
 #include <stdbool.h>
+#include "ast.h"
 
 typedef enum{
 PS_PLUS,
