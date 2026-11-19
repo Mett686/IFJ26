@@ -1,2 +1,9 @@
-// main.c
-// zacatek main.c prozatim placeholder
+//xmiklej00
+
+
+
+
+int main () {
+
+    return 0;
+}

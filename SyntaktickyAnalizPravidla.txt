@@ -1,0 +1,40 @@
+//program->Prolog DefinitionList
+//Prolog -> import ifj26.* "\n"
+//DefinitionList -> definitionItem DefinitionList | epsilon
+//DefinitionItem-> MainFuncDef
+//DefinitionItem->FuncDef
+//MainFuncDef-> @main ["\n"] def id(): Unit=Body
+//funcDefd -> def id() ([parametList]) : type = body
+parametlist -> paramet,parametlist
+parametlist->paramet epsilon
+paramet-> id : type
+type-> Int|double|string|boolean|unit
+Body-> Expretion|Block
+Block->"\n" zaciatokBloku StatementList endBlock
+StatementList->statement "\n" statemantlist | epsilon
+statement-> ValInicial| VarInicial| Ifstatement |WhileLoop| expretion
+ValInicial-> val id()[:] [unit] = expretion
+VarInicial-> var id()[:] [unit] = expretion
+IfStatement-> if expretion then branck else part
+Branch-> Expretion | "\n" startBlock StatementList endBlock
+elsePart-> else Branch|epsilon
+WhileLoop-> while expretion do LoopBody
+LoopBody-> expretion| "\n" startBlock StatementList endBlock
+Expretion-> [unaryoperand] PrimaryExpr (BinaryOperand [unaryoperand] PrimaryExpretion)*
+PrimaryExretion-> id|Literal|functioncall
+BinaryOperand-> +|-|*|/|==|!=|<|>|<=|>=|"||"|&&
+UnaryOperand-> - | !
+FunctionCall-> id() ([ArgumentList])
+ArgumentList->expretion (,expretion)*
+Statement-> id = expretion
+
+import
+
+def
+
+@Main
+    statemantlist
+
+
+
+    
