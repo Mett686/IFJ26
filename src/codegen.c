@@ -84,25 +84,23 @@ static void generate_node(const AST_Node* node)
       // levy exp
       // pravy telo (statemet lsit)
       // next je else !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      char* else_label = [funct_name]$IF$[ifnum]$else;
-      char* end_label = [funct_name]$IF$[ifnum]$end;
       char* exp = node->left->name;
 
       // vyhodnoceni podminky
       generate_node(node->left);
       fprintf(file, "PUSHS 0\n");
       // if
-      fprintf(file, "JUMPIFEQS %s\n", else_label);
+      fprintf(file, "JUMPIFEQS %s$IF$%d$else\n", functname, ifcnt);
       fprintf(file, "CLEARS\n");
       //telo if
       generate_node(node->right);
-      fprintf(file, "JUMP %s\n", end_label);
+      fprintf(file, "JUMP %s$IF$%d$end\n", functname, ifcnt);
       //telo else
-      fprintf(file, "LABEL %s", else_label);
+      fprintf(file, "LABEL %s$IF$%d$else\n", functname, ifcnt);
       fprintf(file, "CLEARS\n");
       generate_node(node->next);
       //konec a vycisteni stacku
-      fprintf(file, "LABEL %s", end_label);
+      fprintf(file, "LABEL %s$IF$%d$end\n", functname, ifcnt);
       break;
     case NODE_ELSE_PART:
       // telo levy podstrom (statement list) ????????? proc ne statement lsit
