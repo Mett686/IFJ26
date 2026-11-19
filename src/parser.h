@@ -119,19 +119,6 @@ static const char table [PS_COUNT][PS_COUNT] = {
     {'>','>','>','>','>','>','>','>','>','>','<','>','>','<','<','<'},
 };
 
-typedef enum{
-    STACK_TOKEN,
-    STACK_TERM
-}Symbol_Category;
-
-typedef struct Stack{
-    Symbol_Category category;
-    Precedens_Symbol symbol;
-    token_t token;
-    Stack *next;
-}Stack;
-
-
 
 AST_Node* AST_inicial();
 

@@ -1,40 +1,41 @@
 //autor: xmiklej00
-
+#include <stdio.h>
 #include <stack.h>
+#include <scanner.h>
+#include <parser.h>
 
-void StackInicial (ParserStack * stack){
-    stack->top=NULL;
-}
-
-bool StackPush (ParserStack* stack, NonTerminal nontoken,EtokenType token){
-    StackSymbol *newSymbol = malloc(sizeof(StackSymbol));
-    if(newSymbol==NULL){
-        return false;
+Stack * stack_iniciaize(){
+    Stack *new_stack=calloc(1,sizeof(Stack));
+    if(new_stack!=NULL){
+        new_stack->next=NULL;
+        new_stack->category=STACK_TERM;
+        new_stack->symbol=PS_END;
+        
+        return new_stack;
+    }else{
+        //ERROR
+        return NULL;
     }
-    newSymbol->next=stack->top;
-    stack->top=newSymbol;
-    if(nontoken==NT_Nothink){
-        newSymbol->token= token
-        newSymbol->NonTerminal=NT_Nothink;
+}
+
+Stack* stack_push(Stack *stack,Symbol_Category category,Precedens_Symbol symbol, token_t *token){
+    Stack *new_stack = malloc(sizeof(Stack));
+    if(new_stack==NULL){
+        //ERROR
+        return NULL;
+    }else{
+        new_stack->next = stack;
+        new_stack->category=category;
+        new_stack->symbol=symbol;
+        new_stack->token = *token;
+        return new_stack;
     }
-    newSymbol->notTerminal=nontoken;
-
 }
 
-void StackPop (ParserStack* stack){
-    StackSymbol* temp= ParserStack->top;
-    ParserStack->top = ParserStack->top->next;
-    free(temp);
+Stack* stack_pop(Stack *stack){
+    Stack *tmp= stack->next;
+    free(stack);
+    
+    return tmp;
 }
 
-void StackFree (ParserStack* stack){
-    StackSymbol *tmp = stack->top;
-    StackSymbol *temp;
-    while(tmp->next!=NULL){
-        temp=tmp->next;
-        free(tmp);
-        tmp=temp;
-    }    
-    free(temp);
-    stack->top=NULL;
-}
