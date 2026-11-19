@@ -22,6 +22,10 @@ NODE_STATEMENT_LIST, // --
 // left - FUNC_CALL, ASSIGN, VAL, VAR, IF, WHILE, EXP, RETURN
 // right - STATEMENT_LIST
 NODE_STATEMENT, // -- vyuziva pouze synAn
+NODE_FUNC_CALL, //
+// left - ARG_LIST
+NODE_ASSIGN, // -- id
+// left - EXP
 NODE_VAL_DEF, // -- id
 // left - EXP
 NODE_VAR_DEF,
