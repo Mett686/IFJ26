@@ -14,7 +14,7 @@ Stack * stack_initialize(){
         
         return new_stack;
     }else{
-        //ERROR
+        exit(99);
         return NULL;
     }
 }
@@ -22,7 +22,7 @@ Stack * stack_initialize(){
 Stack* stack_push_precedence(Stack *stack,Precedence precedence){
     Stack *new_stack = calloc(1,sizeof(Stack));
     if(new_stack==NULL){
-        //ERROR
+        exit(99);
         return NULL;
     }else{
         new_stack->next = stack;
@@ -36,7 +36,7 @@ Stack* stack_push_precedence(Stack *stack,Precedence precedence){
 Stack* stack_push(Stack *stack,Symbol_Category category,Precedence_Symbol symbol, token_t *token){
     Stack *new_stack = malloc(sizeof(Stack));
     if(new_stack==NULL){
-        //ERROR
+        exit(99);
         return NULL;
     }else{
         new_stack->next = stack;

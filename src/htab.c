@@ -103,7 +103,7 @@ htabItem_t* htabWrite(htab_t* t, char* key) {
     }
     // create entry
     item->key = malloc(strlen(key) + 1);
-    if(!item->key) exit(EXIT_FAILURE);
+    if(!item->key) exit(99);
     // fill entry
     strcpy(item->key, key);
     item->hash = hashFunction(key, OFFSET_BASIS);
@@ -125,7 +125,7 @@ htabItem_t* htabWriteNew(htab_t* t, char* key) {
   }
   // create entry
   item->key = malloc(strlen(key) + 1);
-  if(!item->key) exit(EXIT_FAILURE);
+  if(!item->key) exit(99);
   // fill entry
   strcpy(item->key, key);
   item->hash = hashFunction(key, OFFSET_BASIS);
@@ -158,7 +158,7 @@ htabItem_t* htabResize(htab_t* t, uint32_t size) {
   uint32_t threshold = (capacity*3)>>2;
 
   htabItem_t* new = malloc(capacity*sizeof(htabItem_t));
-  if(!new) exit(EXIT_FAILURE); // chyba ukoncit
+  if(!new) exit(99); // chyba ukoncit
   for(uint32_t i = 0; i < capacity; i++) {
     memset(&new[i], 0, sizeof(htabItem_t));
   }

@@ -10,7 +10,7 @@ AST_Node* AST_inicial(void){
     AST_Node *table = malloc(sizeof(AST_Node));
     if(table==NULL){
         free(table);
-        exit(-1);
+        exit(99);
     }
     table->left =NULL;
     table->right = NULL;
