@@ -83,17 +83,21 @@ static void generate_node(const AST_Node* node)
       generate_node(node->left);
       fprintf(file, "PUSHS 0\n");
       // if
-      fprintf(file, "JUMPIFEQS %s$IF$%d$else\n", functname, ifcnt);
+      fprintf(file, "JUMPIFEQS $IF$$else\n"); //TODO replace with ↓
+      //fprintf(file, "JUMPIFEQS %s$IF$%d$else\n", functname, ifcnt);
       fprintf(file, "CLEARS\n");
       //telo if
       generate_node(node->right);
-      fprintf(file, "JUMP %s$IF$%d$end\n", functname, ifcnt);
+      fprintf(file, "JUMP $IF$$end\n"); //TODO replace with ↓
+      //fprintf(file, "JUMP %s$IF$%d$end\n", functname, ifcnt);
       //telo else
-      fprintf(file, "LABEL %s$IF$%d$else\n", functname, ifcnt);
+      fprintf(file, "LABEL $IF$$else\n"); //TODO replace with ↓
+      //fprintf(file, "LABEL %s$IF$%d$else\n", functname, ifcnt); 
       fprintf(file, "CLEARS\n");
       generate_node(node->next);
       //konec a vycisteni stacku
-      fprintf(file, "LABEL %s$IF$%d$end\n", functname, ifcnt);
+      fprintf(file, "LABEL $IF$$end\n"); //TODO replace with ↓
+      //fprintf(file, "LABEL %s$IF$%d$end\n", functname, ifcnt);
       break;
     case NODE_ELSE:
       // telo levy podstrom (statement list) ????????? proc ne statement lsit
@@ -106,18 +110,22 @@ static void generate_node(const AST_Node* node)
       defvarPregen(node->right);
       generateDEFVAR = false;
 
-      fprintf(file, "LABEL %s$while$%d$start", func, whilcnt);
+      fprintf(file, "LABEL $while$$start\n"); //TODO replace with ↓
+      //fprintf(file, "LABEL %s$while$%d$start\n", func, whilcnt); 
       // vyhodnoceni podminky
       generate_node(node->left);
       fprintf(file, "PUSHS 0\n");
       // podmineny skok
-      fprintf(file, "JUMPIFEQS %s$while$%d$end\n", func, whilecnt);
+      fprintf(file, "JUMPIFEQS $while$$end\n"); //TODO replace with ↓
+      //fprintf(file, "JUMPIFEQS %s$while$%d$end\n", func, whilecnt);
       fprintf(file, "CLEARS\n");
       // telo while bez defvar
       generate_node(node->right);
-      fprintf(file, "JUMP %s$while$%d$start", func, whilcnt);
+      fprintf(file, "JUMP $while$$start\n"); //TODO replace with ↓
+      //fprintf(file, "JUMP %s$while$%d$start\n", func, whilcnt);
       // konec
-      fprintf(file, "LABEL %s$while$%d$end\n", func, whilecnt);
+      fprintf(file, "LABEL $while$$end\n"); //TODO replace with ↓
+      //fprintf(file, "LABEL %s$while$%d$end\n", func, whilecnt); 
       fprintf(file, "CLEARS\n");
       generateDEFVAR = true;
 
