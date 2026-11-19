@@ -4,11 +4,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "htab.h"
-#include "../src/mock/mock_ast.h"  //fix later
+//#include "../src/mock/mock_ast.h"  //fix later
 #include "abtDecoding.h"
+#include "parser.h"
 
 
-static void blockCheck(const char* op, char* varName, tnode* parent, htab_t* globalHashTable, htab_t* localHashTable) {
+static void blockCheck(const char* op, char* varName, AST_Node* parent, htab_t* globalHashTable, htab_t* localHashTable) {
     if (localHashTable == NULL || globalHashTable == NULL) {
         fprintf(stderr, "semanticická analýza: interní chyba překladače neovlivněná vstupním programem (např. chyba alokace paměti). \n");
         exit(99);
@@ -20,12 +21,12 @@ static void blockCheck(const char* op, char* varName, tnode* parent, htab_t* glo
             fprintf(stderr, "semanticická analýza: nepovolená redefinice funkce, proměnné, typu. \n");
             exit(4);
         }
-        htabItem_t *varData = htabWriteNew(localHashTable, varName);
-        varData->isMutable = parent->isVar;
+        htabItem_t *varData = htabWriteNew(localHashTable, varName, NULL);
+        varData->isMutable = (parent->node_type == NODE_VAR_DEF);
         varData->isFunction = false;
         varData->paramCount = 0;
         varData->paramTypes = NULL;
-        varData->returnType = parent->dataType;
+        varData->returnType = parent->data_type;
 
     } else if ((strcmp(op, "assign")) == 0) {
         htabItem_t* foundItem = NULL;
@@ -42,8 +43,8 @@ static void blockCheck(const char* op, char* varName, tnode* parent, htab_t* glo
             fprintf(stderr, "semanticická analýza:  použití nedefinované funkce, proměnné nebo typu; chybějící funkce s anotací @main \n");
             exit(3);
         }
-
-        if (foundItem->isMutable == false) {
+        htabItem_t *target = (foundItem != NULL) ? foundItem : globallyDefined;
+        if (target->isMutable == false) {
             fprintf(stderr, "semanticická analýza:  pokus o zápis do nemodifikovatelné proměnné nebo formálního parametru funkce \n");
             exit(7);
         }
@@ -53,59 +54,98 @@ static void blockCheck(const char* op, char* varName, tnode* parent, htab_t* glo
     }
 }
 
-static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable, int* inBlock, int* currentReturnType) {
+int isNumericType(int type) {
+    return (type == TYPE_INT || type == TYPE_DOUBLE);
+}
+
+static void checkNode(AST_Node *parent, htab_t* hashTable, htab_t** localHashTable, int* inBlock, int* currentReturnType, int* mainFuncCount) {
     int leftType;
     int rightType;
 
     if (parent->left != NULL) {
-        leftType = parent->left->dataType;
+        leftType = parent->left->data_type;
     } else {
         leftType = -1;
     }
 
     if (parent->right != NULL) {
-        rightType = parent->right->dataType;
+        rightType = parent->right->data_type;
     } else {
         rightType = -1;
     }
 
-    switch (parent->dataType) {
-        case opAdd:
-        case opDec:
-        case opMul:
-        case opDiv:
-            if (leftType == rightType) {
-                parent->dataType = leftType;
-            } else {
-                fprintf(stderr, "semanticická analýza: chyba typové kompatibility nebo odvození typu ve výrazu, přiřazení, inicializaci, návratové hodnotě či řídicí konstrukci \n");
-                exit(6);
-            }
-            break;
+    switch (parent->node_type) {
+        case NODE_EXPRETION:
+            switch (parent->operator_type) {
+                case OT_PLUS:
+                    {
+                        if (leftType == TYPE_STRING && rightType == TYPE_STRING) {
+                            parent->data_type = TYPE_STRING;
+                        } else if (isNumericType(leftType) && isNumericType(rightType)) {
+                            parent->data_type = (leftType == TYPE_DOUBLE || rightType == TYPE_DOUBLE) ? TYPE_DOUBLE : TYPE_INT;
+                        } else {
+                            fprintf(stderr, "semanticická analýza: chyba typové kompatibility nebo odvození typu ve výrazu, přiřazení, inicializaci, návratové hodnotě či řídicí konstrukci \n");
+                            exit(6);
+                        }
+                        break;
+                    }
+                case OT_MINUS:
+                case OT_TIMES:
+                case OT_DIVIDE:
+                {
+                    if (isNumericType(leftType) && isNumericType(rightType)) {
+                        parent->data_type = (leftType == TYPE_DOUBLE || rightType == TYPE_DOUBLE) ? TYPE_DOUBLE : TYPE_INT;
+                    } else {
+                        fprintf(stderr, "semanticická analýza: chyba typové kompatibility nebo odvození typu ve výrazu, přiřazení, inicializaci, návratové hodnotě či řídicí konstrukci \n");
+                        exit(6);
+                    }
+                    break;
+                }
 
-        case opMod:
-            if (leftType == TYPE_INT && rightType == TYPE_INT) {
-                parent->dataType = TYPE_INT;
-            } else {
-                fprintf(stderr, "semanticická analýza: chyba typové kompatibility nebo odvození typu ve výrazu, přiřazení, inicializaci, návratové hodnotě či řídicí konstrukci \n");
-                exit(6);
-            }
-            break;
+                case OT_MOD:
+                {
+                    if (leftType == TYPE_INT && rightType == TYPE_INT) {
+                        parent->data_type = TYPE_INT;
+                    } else {
+                        fprintf(stderr, "semanticická analýza: chyba typové kompatibility nebo odvození typu ve výrazu, přiřazení, inicializaci, návratové hodnotě či řídicí konstrukci \n");
+                        exit(6);
+                    }
+                    break;
+                }    
 
-        case opEqual:
-        case opLesser:
-        case opBigger:
-            if (leftType == rightType) {
-                parent->dataType = TYPE_BOOL;
-            } else {
-                fprintf(stderr, "semanticická analýza: chyba typové kompatibility nebo odvození typu ve výrazu, přiřazení, inicializaci, návratové hodnotě či řídicí konstrukci \n");
-                exit(6);
-            }
-            break;
+                case OT_EQUAL:
+                case OT_NOT_EQUAL:
+                case OT_LESS:
+                case OT_GREATER:
+                case OT_LESS_EQUAL:
+                case OT_GREATER_EQUAL:
+                {
+                    if (leftType == rightType) {
+                        parent->data_type = TYPE_BOOL;
+                    } else {
+                        fprintf(stderr, "semanticická analýza: chyba typové kompatibility nebo odvození typu ve výrazu, přiřazení, inicializaci, návratové hodnotě či řídicí konstrukci \n");
+                        exit(6);
+                    }
+                    break;
+                }
+                case OT_AND:
+                case OT_OR:
+                {
+                    if (leftType == TYPE_BOOL && rightType == TYPE_BOOL) {
+                        parent->data_type = TYPE_BOOL;
+                    } else {
+                        fprintf(stderr, "semanticická analýza: chyba typové kompatibility nebo odvození typu ve výrazu, přiřazení, inicializaci, návratové hodnotě či řídicí konstrukci \n");
+                        exit(6);
+                    }
+                    break;
+                }      
+        }
+        break;    
 
-        case opCall:
+        case NODE_FUNC_CALL:
         {
-            char *funcName = parent->left->value;
-            tnode *opArg = parent->right;
+            char *funcName = parent->left;
+            AST_Node *opArg = parent->right;
             int index = 0;
             htabItem_t *funcDef = htabGet(hashTable, funcName);
             if (funcDef == NULL) {
@@ -125,7 +165,7 @@ static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable,
                     exit(5);
                 } 
 
-                int argType = opArg->left->dataType;
+                int argType = opArg->left->data_type;
                 opArg = opArg->right;
                 int expectedType = paramTypes[index];
                 if (argType != expectedType){
@@ -133,7 +173,7 @@ static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable,
                         //automaticka konverze z int na double
                     } else {
                         fprintf(stderr, "semanticická analýza: chyba typové kompatibility nebo odvození typu ve výrazu, přiřazení, inicializaci, návratové hodnotě či řídicí konstrukci \n");
-                        exit(6);
+                        exit(5);
                     }
                 }
                 index++;
@@ -142,15 +182,17 @@ static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable,
                 fprintf(stderr, "semanticická analýza: nesprávný počet nebo typ argumentů při volání funkce, nepovolené parametry funkce s anotací @main. \n");
                 exit(5);
             }
-            parent->dataType = funcDef->returnType;  
+            parent->data_type = funcDef->returnType;  
             break;
         }
 
-        case opVarDeclare:
+        case NODE_VAR_DEF:
+        case NODE_VAL_DEF:
         {
-            char *varName = parent->left->value;
+            bool isMutable = (parent->node_type == NODE_VAR_DEF);
+            char *varName = parent->left->name;
 
-            if (inBlock) {
+            if (*inBlock) {
                 blockCheck("declare", varName, parent, hashTable, *localHashTable);
                 break;
             }
@@ -160,8 +202,9 @@ static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable,
                 fprintf(stderr, "semanticická analýza: nepovolená redefinice funkce, proměnné, typu.");
                 exit(4);
             }
+            
 
-            if (leftType != rightType || parent->dataType != leftType) {
+            if (leftType != rightType || parent->data_type != leftType) {
                 if (leftType == TYPE_DOUBLE && rightType == TYPE_INT){
                     // automaticka konverze
                 } 
@@ -170,19 +213,20 @@ static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable,
                     exit(6);
                 }
             }
-            htabItem_t *varData = htabWriteNew(hashTable, varName);
+            htabItem_t *varData = htabWriteNew(hashTable, varName, NULL);
             varData->isFunction = false;
-            varData->isMutable = parent->isVar;
+            varData->isMutable = isMutable;
             varData->paramCount = 0;
             varData->paramTypes = NULL;
-            varData->returnType = parent->dataType;
+            varData->returnType = parent->data_type;
             break;
         }
 
-        case funcDef:
+        case NODE_FUNC_DEF:
+        case NODE_FUNC_DEF_MAIN:
         {
-            *currentReturnType = parent->dataType;
-            char *funcName = parent->left->value;
+            *currentReturnType = parent->data_type;
+            char *funcName = parent->left->name;
             htabItem_t *funcDef = htabGet(hashTable, funcName);
 
             if (funcDef != NULL){
@@ -191,34 +235,62 @@ static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable,
             }
 
             int count = 0;
-            tnode *paramNode = parent->right; 
+            AST_Node *paramNode = parent->left; 
     
             while (paramNode != NULL) {
                 count++;
-                paramNode = paramNode->right;
+                paramNode = paramNode->next;
             }
+            
+            if (parent->node_type == NODE_FUNC_DEF_MAIN){
+                (*mainFuncCount)++;
+
+                if (*mainFuncCount > 1){
+                    fprintf(stderr, "semanticická analýza: nepovolená redefinice funkce, proměnné, typu.");
+                    exit(4);
+                }
+
+                if (count > 0){
+                    fprintf(stderr, "semanticická analýza: nesprávný počet nebo typ argumentů při volání funkce, nepovolené parametry funkce s anotací @main. \n");
+                    exit(5);
+                }
+
+                if (parent->data_type != TYPE_UNIT){
+                    fprintf(stderr, "semanticická analýza: chyba typové kompatibility nebo odvození typu ve výrazu, přiřazení, inicializaci, návratové hodnotě či řídicí konstrukci \n");
+                    exit(6);
+                }
+
+            }
+
+            
 
             int *typesArray = NULL;
             if (count > 0) {
-                typesArray = malloc(count * sizeof(int));   
-                paramNode = parent->right;
+                typesArray = malloc(count * sizeof(int));
+
+                if (typesArray == NULL) {
+                    fprintf(stderr, "semanticická analýza: interní chyba překladače neovlivněná vstupním programem (např. chyba alokace paměti). \n");
+                    exit(99);
+                }
+
+                paramNode = parent->left;
                 int index = 0;
                 while (paramNode != NULL) {
-                    typesArray[index] = paramNode->left->dataType;
+                    typesArray[index] = paramNode->data_type;
                     index++;
-                    paramNode = paramNode->right;
+                    paramNode = paramNode->next;
                 }
             }
-            htabItem_t *funcData = htabWriteNew(hashTable, funcName);
+            htabItem_t *funcData = htabWriteNew(hashTable, funcName, NULL);
             funcData->isFunction = true;
             funcData->paramCount = count;
             funcData->paramTypes = typesArray;
-            funcData->returnType = parent->dataType;
+            funcData->returnType = parent->data_type;
             funcData->isMutable = false;
             break;
         }
 
-        case opAssign:
+        case NODE_ASSIGNMENT:
         {
             if (leftType != rightType) {
                 if (leftType == TYPE_DOUBLE && rightType == TYPE_INT){
@@ -231,12 +303,12 @@ static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable,
             }
 
             if (*inBlock) {
-                char *varName = parent->left->value;
+                char *varName = parent->left->name;
                 blockCheck("assign", varName, parent, hashTable, *localHashTable);
                 break;
             }
 
-            char *varName = parent->left->value;
+            char *varName = parent->left->name;
 
             htabItem_t *varDef = htabGet(hashTable, varName);
             if (varDef == NULL) {
@@ -250,15 +322,17 @@ static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable,
             }
             break;
         }
+        
+    
 
-        case opBlock:
+        /* case NODE_BLOCK:
         {
             *inBlock = 1;
             if (*localHashTable == NULL){
-                *localHashTable = htabCreate(503);
+                *localHashTable = htabCreate(503, 0);
                 (*localHashTable)->parent = NULL;
             } else {
-                htab_t* newScope = htabCreate(503);
+                htab_t* newScope = htabCreate(503, 0);
                 newScope->parent = *localHashTable;
                 *localHashTable = newScope;
             }          
@@ -276,10 +350,10 @@ static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable,
                 *inBlock = 0;
             }
             break;
-        }
+        } */
 
-        case opIf:
-        case opWhile:
+        case NODE_IF_STATEMENT:
+        case NODE_WHILE_LOOP:
         {
             if (leftType != TYPE_BOOL){
                 fprintf(stderr, "semanticická analýza: chyba typové kompatibility nebo odvození typu ve výrazu, přiřazení, inicializaci, návratové hodnotě či řídicí konstrukci \n");
@@ -287,12 +361,26 @@ static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable,
             }
             break;
         }
-        case opReturn:
+        case NODE_RETURN:
         {
             if (leftType != *currentReturnType){
+                if (*currentReturnType == TYPE_DOUBLE && leftType == TYPE_INT) {
+                }
+                else {
+                    fprintf(stderr, "semanticická analýza: chyba typové kompatibility nebo odvození typu ve výrazu, přiřazení, inicializaci, návratové hodnotě či řídicí konstrukci \n");
+                    exit(6);
+                }
+                
+            }
+            if (*currentReturnType == TYPE_UNIT) {
+                break;
+            }
+
+            if (parent->left == NULL) {
                 fprintf(stderr, "semanticická analýza: chyba typové kompatibility nebo odvození typu ve výrazu, přiřazení, inicializaci, návratové hodnotě či řídicí konstrukci \n");
                 exit(6);
             }
+
             if (*currentReturnType == -1){
                 fprintf(stderr, "semanticická analýza: nezařazená chyba (např. nepovolený return, nevyčerpávající match nebo nulový krok rozsahu). \n");
                 exit(10);
@@ -301,31 +389,51 @@ static void checkNode(tnode *parent, htab_t* hashTable, htab_t** localHashTable,
     }
 }
 
-static void recursiveSemanticCheck(tnode *ptr, htab_t* hashTable, htab_t** localHashTable, int* inBlock, int* currentReturnType){
+static void recursiveSemanticCheck(AST_Node *ptr, htab_t* hashTable, htab_t** localHashTable, int* inBlock, int* currentReturnType, int* mainFuncCount){
     //postOrder browsing through the abstract tree
     if (ptr == NULL) {
         return;
     }
-    recursiveSemanticCheck(ptr->left, hashTable, localHashTable, inBlock, currentReturnType);
-    recursiveSemanticCheck(ptr->right, hashTable, localHashTable, inBlock, currentReturnType);
-    if (ptr->left != NULL || ptr->right != NULL) {
-        checkNode(ptr, hashTable, localHashTable, inBlock, currentReturnType);
+
+    if (ptr->node_type == NODE_BLOCK) {
+        *inBlock = 1;
+        if (*localHashTable == NULL){
+            *localHashTable = htabCreate(503, 0);
+            (*localHashTable)->parent = NULL;
+        } else {
+            htab_t* newScope = htabCreate(503, 0);
+            newScope->parent = *localHashTable;
+            *localHashTable = newScope;
+        }          
     }
+
+    recursiveSemanticCheck(ptr->left, hashTable, localHashTable, inBlock, currentReturnType, mainFuncCount);
+    recursiveSemanticCheck(ptr->right, hashTable, localHashTable, inBlock, currentReturnType, mainFuncCount);
+
+    if (ptr->left != NULL || ptr->right != NULL) {
+        checkNode(ptr, hashTable, localHashTable, inBlock, currentReturnType, mainFuncCount);
+    }
+
+    if (ptr->node_type == NODE_BLOCK) {
+        if (*localHashTable != NULL) {
+            *localHashTable = (*localHashTable)->parent;
+        }
+        if (*localHashTable == NULL) {
+            *inBlock = 0;
+        }
+    }
+    recursiveSemanticCheck(ptr->next, hashTable, localHashTable, inBlock, currentReturnType, mainFuncCount);
 }
 
-void semanticCheck(tnode *ptr, htab_t* hashTable) {
+void semanticCheck(AST_Node *ptr, htab_t* hashTable) {
     int inBlock = 0;
     htab_t* localHashTable = NULL;
     int currentReturnType = -1;
-    recursiveSemanticCheck(ptr, hashTable, &localHashTable, &inBlock, &currentReturnType);
-    htabItem_t *mainFunc = htabGet(hashTable, "@main");
-    if (mainFunc == NULL) {
+    int mainFuncCount = 0;
+    recursiveSemanticCheck(ptr, hashTable, &localHashTable, &inBlock, &currentReturnType, &mainFuncCount);
+
+    if (mainFuncCount == 0) {
         fprintf(stderr, "semanticická analýza:  použití nedefinované funkce, proměnné nebo typu; chybějící funkce s anotací @main \n");
         exit(3);
-    }
-
-    if (mainFunc->paramCount > 0){
-        fprintf(stderr, "semanticická analýza: nesprávný počet nebo typ argumentů při volání funkce, nepovolené parametry funkce s anotací @main. \n");
-        exit(5);
     }
 }
