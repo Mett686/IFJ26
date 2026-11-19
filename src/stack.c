@@ -18,6 +18,20 @@ Stack * stack_iniciaize(){
     }
 }
 
+Stack* stack_push_precedence(Stack *stack,Precedens precedens){
+    Stack *new_stack = calloc(1,sizeof(Stack));
+    if(new_stack==NULL){
+        //ERROR
+        return NULL;
+    }else{
+        new_stack->next = stack;
+        new_stack->precedenc = precedens;
+        return new_stack;
+    }
+}
+
+
+
 Stack* stack_push(Stack *stack,Symbol_Category category,Precedens_Symbol symbol, token_t *token){
     Stack *new_stack = malloc(sizeof(Stack));
     if(new_stack==NULL){

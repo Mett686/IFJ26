@@ -12,6 +12,7 @@ typedef enum{
 typedef struct Stack{
     Symbol_Category category;
     Precedens_Symbol symbol;
+    Precedens recedece;
     token_t token;
     Stack *next;
 }Stack;
