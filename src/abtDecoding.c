@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "htab.h"
-//#include "../src/mock/mock_ast.h"  //fix later
 #include "abtDecoding.h"
 #include "parser.h"
 
@@ -144,7 +143,7 @@ static void checkNode(AST_Node *parent, htab_t* hashTable, htab_t** localHashTab
 
         case NODE_FUNC_CALL:
         {
-            char *funcName = parent->left;
+            char *funcName = parent->left->name;
             AST_Node *opArg = parent->right;
             int index = 0;
             htabItem_t *funcDef = htabGet(hashTable, funcName);
@@ -192,6 +191,16 @@ static void checkNode(AST_Node *parent, htab_t* hashTable, htab_t** localHashTab
             bool isMutable = (parent->node_type == NODE_VAR_DEF);
             char *varName = parent->left->name;
 
+            if (leftType != rightType || parent->data_type != leftType) {
+                if (leftType == TYPE_DOUBLE && rightType == TYPE_INT){
+                    // automaticka konverze
+                } 
+                else {
+                    fprintf(stderr, "semanticická analýza: chyba typové kompatibility nebo odvození typu ve výrazu, přiřazení, inicializaci, návratové hodnotě či řídicí konstrukci \n");
+                    exit(6);
+                }
+            }
+
             if (*inBlock) {
                 blockCheck("declare", varName, parent, hashTable, *localHashTable);
                 break;
@@ -204,15 +213,6 @@ static void checkNode(AST_Node *parent, htab_t* hashTable, htab_t** localHashTab
             }
             
 
-            if (leftType != rightType || parent->data_type != leftType) {
-                if (leftType == TYPE_DOUBLE && rightType == TYPE_INT){
-                    // automaticka konverze
-                } 
-                else {
-                    fprintf(stderr, "semanticická analýza: chyba typové kompatibility nebo odvození typu ve výrazu, přiřazení, inicializaci, návratové hodnotě či řídicí konstrukci \n");
-                    exit(6);
-                }
-            }
             htabItem_t *varData = htabWriteNew(hashTable, varName, NULL);
             varData->isFunction = false;
             varData->isMutable = isMutable;
@@ -241,7 +241,7 @@ static void checkNode(AST_Node *parent, htab_t* hashTable, htab_t** localHashTab
                 count++;
                 paramNode = paramNode->next;
             }
-            
+
             if (parent->node_type == NODE_FUNC_DEF_MAIN){
                 (*mainFuncCount)++;
 
@@ -322,35 +322,6 @@ static void checkNode(AST_Node *parent, htab_t* hashTable, htab_t** localHashTab
             }
             break;
         }
-        
-    
-
-        /* case NODE_BLOCK:
-        {
-            *inBlock = 1;
-            if (*localHashTable == NULL){
-                *localHashTable = htabCreate(503, 0);
-                (*localHashTable)->parent = NULL;
-            } else {
-                htab_t* newScope = htabCreate(503, 0);
-                newScope->parent = *localHashTable;
-                *localHashTable = newScope;
-            }          
-            break;
-        }
-
-        case opEndBlock:
-        {
-            *inBlock = 0;
-            if (*localHashTable != NULL) {
-                *localHashTable = (*localHashTable)->parent;
-            }
-            
-            if (*localHashTable == NULL) {
-                *inBlock = 0;
-            }
-            break;
-        } */
 
         case NODE_IF_STATEMENT:
         case NODE_WHILE_LOOP:
@@ -395,6 +366,11 @@ static void recursiveSemanticCheck(AST_Node *ptr, htab_t* hashTable, htab_t** lo
         return;
     }
 
+    int prevReturnType = *currentReturnType;
+    if (ptr->node_type == NODE_FUNC_DEF || ptr->node_type == NODE_FUNC_DEF_MAIN) {
+        *currentReturnType = ptr->data_type;
+    }
+
     if (ptr->node_type == NODE_BLOCK) {
         *inBlock = 1;
         if (*localHashTable == NULL){
@@ -422,6 +398,11 @@ static void recursiveSemanticCheck(AST_Node *ptr, htab_t* hashTable, htab_t** lo
             *inBlock = 0;
         }
     }
+
+    if (ptr->node_type == NODE_FUNC_DEF || ptr->node_type == NODE_FUNC_DEF_MAIN) {
+        *currentReturnType = prevReturnType;
+    }
+    
     recursiveSemanticCheck(ptr->next, hashTable, localHashTable, inBlock, currentReturnType, mainFuncCount);
 }
 
