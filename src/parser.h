@@ -60,8 +60,8 @@ typedef struct Stack{
     Symbol_Category category;
     Precedens_Symbol symbol;
     token_t token;
-    Stack *next;
-}Stack;
+    struct Stack *next;
+}Stack_t;
 
 
 
