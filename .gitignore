@@ -4,3 +4,4 @@
 *.exe
 scanner_tester_output.txt
 /tests/IFJ26codeExamples/test.txt
+*.d
