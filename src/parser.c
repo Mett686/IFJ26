@@ -9,7 +9,7 @@
 void parser(FILE* stream);
 
 AST_Node* AST_inicial(){
-    AST_Node *table = mallock(sizeof(AST_Node));
+    AST_Node *table = malloc(sizeof(AST_Node));
     if(table==NULL){
         free(table);
         exit(-1);
@@ -23,7 +23,7 @@ AST_Node* AST_inicial(){
 }
 
 void create_node(Node_type type,AST_Node *node){
-    AST_Node *new_node = mallock(sizeof(AST_Node));
+    AST_Node *new_node = malloc(sizeof(AST_Node));
     if(new_node==NULL){
         return 1; 
     }
@@ -117,7 +117,7 @@ void parser_defFunction(FILE*stream,token_t *token,AST_Node*node){
 
         if(token->type == TKN_OPENING_PARENTHESES){
             create_node(NODE_PARAM,node->left);
-            parser_parametList(stream,token,node->left);
+            parser_parameterList(stream,token,node->left);
             
             
             if (token->type == TKN_CLOSING_PARENTHESES){
@@ -168,7 +168,7 @@ void parser_defMainFunc(FILE* stream,token_t *token,AST_Node *node){
 
                 if(token->type == TKN_OPENING_PARENTHESES){
                     create_node(NODE_PARAM,node->left);
-                    parser_parametList(stream,token,node->left);
+                    parser_parameterList(stream,token,node->left);
                     
 
                     if(token->type == TKN_CLOSING_PARENTHESES){
@@ -186,7 +186,7 @@ void parser_defMainFunc(FILE* stream,token_t *token,AST_Node *node){
 
                         }else if (token->type == TKN_ASSING){
                             node->data_type=TYPE_NULL;
-                            parse_body(stream,token);
+                            parser_body(stream,token);
                         }else{
                             //ERROR
                         }
@@ -218,7 +218,7 @@ void parser_defMainFunc(FILE* stream,token_t *token,AST_Node *node){
 
             if(token->type == TKN_OPENING_PARENTHESES){
                 create_node(NODE_PARAM,node->left);
-                parser_parametList(stream,token,node->left);
+                parser_parameterList(stream,token,node->left);
                 
 
                 if(token->type == TKN_CLOSING_PARENTHESES){
@@ -230,7 +230,7 @@ void parser_defMainFunc(FILE* stream,token_t *token,AST_Node *node){
                         *token = getToken(stream);
 
                         if(token->type == TKN_ASSING){
-                            parse_body(stream,token,node->right);
+                            parser_body(stream,token,node->right);
                         }
 
                     }else if(token->type == TKN_ASSING){
@@ -308,7 +308,7 @@ void parser_body(FILE*stream,token_t *token,AST_Node*node){
     case TKN_DOUBLE:
     case TKN_UNIT:
     case TKN_STRING:
-        parser_expretion(stream,token,node);
+        parser_expression(stream,token,node);
         *token = getToken(stream);
         if(token->type != TKN_NEWLINE){
             exit(2);//TODO ERROR
@@ -366,30 +366,30 @@ void parser_statementList(FILE* stream,token_t *token,AST_Node*node){
             case TKN_INT:
                 create_node(NODE_EXP,node->left);
                 node->data_type=TYPE_INT;
-                parser_expretion(stream,token,node->left);
+                parser_expression(stream,token,node->left);
                 parser_between(stream,token);
                 break;
             case TKN_DOUBLE:
                 create_node(NODE_EXP,node->left);
                 node->data_type=TYPE_DOUBLE;
-                parser_expretion(stream,token,node->left);
+                parser_expression(stream,token,node->left);
                 parser_between(stream,token);
                 break;
             case TKN_UNIT:
                 create_node(NODE_EXP,node->left);
                 node->data_type=TYPE_UNIT;
-                parser_expretion(stream,token,node->left);
+                parser_expression(stream,token,node->left);
                 parser_between(stream,token);
                 break;
             case TKN_STRING:
                 create_node(NODE_EXP,node->left);
                 node->data_type=TYPE_STRING;
-                parser_expretion(stream,token,node->left);
+                parser_expression(stream,token,node->left);
                 parser_between(stream,token);
             break;
             case TKN_OPENING_PARENTHESES:
                 create_node(NODE_EXP,node->left);
-                parser_expretion(stream,token,node->left);
+                parser_expression(stream,token,node->left);
                 parser_between(stream,token);
             break;
             case TKN_RETURN:
@@ -434,7 +434,7 @@ void parser_valDef(FILE*stream,token_t *token,AST_Node *node){
         if(token->type == TKN_ASSING){
             
             create_node(NODE_EXP,node->right);
-            parser_expretion(stream,token,node->right);
+            parser_expression(stream,token,node->right);
 
         }else{
             //ERROR
@@ -463,7 +463,7 @@ void parser_varDef (FILE* stream,token_t *token,AST_Node *node){
         if(token->type == TKN_ASSING){
 
             create_node(NODE_EXP,node->right);
-            parser_expretion(stream,token,node->right);
+            parser_expression(stream,token,node->right);
         
         }else{
             //ERROR
@@ -477,7 +477,7 @@ void parser_varDef (FILE* stream,token_t *token,AST_Node *node){
 void parser_ifStatement (FILE* stream,token_t *token,AST_Node *node){
     *token = getToken(stream);
     create_node(NODE_EXP,node->left);
-    parser_expretion(stream,token,node->left);
+    parser_expression(stream,token,node->left);
     
     if (token->type == TKN_THEN){
         parser_body(stream,token,node->right);
@@ -523,7 +523,7 @@ void parser_whileLoop(FILE* stream,token_t *token,AST_Node *node){
     *token = getToken(stream);
     create_node(NODE_WHILE_LOOP,node);
     create_node(NODE_EXP,node->left);
-    parser_expretion(stream,token,node->left);
+    parser_expression(stream,token,node->left);
     
     if(token->type == TKN_DO){
         
@@ -541,35 +541,35 @@ void parser_returnRest(FILE* stream,token_t *token,AST_Node*node){
         case TKN_ID:
             create_node(NODE_EXP,node->left);
             node->left->name = token->string;
-            parser_expretion(stream,token,node->left);
+            parser_expression(stream,token,node->left);
             break;
         case TKN_MINUS:
-            reate_node(NODE_EXP,node->left);
-            parser_expretion(stream,token,node->left);
+            create_node(NODE_EXP,node->left);
+            parser_expression(stream,token,node->left);
             break;
         case TKN_INT:
             create_node(NODE_EXP,node->left);
             node->left->data_type = TYPE_UNIT;
-            parser_expretion(stream,token,node->left);
+            parser_expression(stream,token,node->left);
             break;
         case TKN_DOUBLE:create_node(NODE_EXP,node->left);
             node->left->data_type = TYPE_UNIT;
-            parser_expretion(stream,token,node->left);
+            parser_expression(stream,token,node->left);
             break;
         case TKN_STRING:
             create_node(NODE_EXP,node->left);
             node->left->data_type = TYPE_UNIT;
-            parser_expretion(stream,token,node->left);
+            parser_expression(stream,token,node->left);
             break;
         case TKN_UNIT:
             create_node(NODE_EXP,node->left);
             node->left->data_type = TYPE_UNIT;
-            parser_expretion(stream,token,node->left);
+            parser_expression(stream,token,node->left);
             break;
 
         case TKN_OPENING_PARENTHESES:
             create_node(NODE_EXP,node->left);
-            parser_expretion(stream,token,node->left);
+            parser_expression(stream,token,node->left);
         break;
         case TKN_NEWLINE:
         case TKN_DEDENTATION:
@@ -583,15 +583,15 @@ void parser_returnRest(FILE* stream,token_t *token,AST_Node*node){
     }
 }
 
-void parser_parametList(FILE*stream,token_t *token,AST_Node*node){
+void parser_parameterList(FILE*stream,token_t *token,AST_Node*node){
     
     *token = getToken(stream);
     
     if(token->type == TKN_ID){
         node->name= token->string;
         
-        parser_paramet(stream,token,node);
-        parser_parametListRest(stream,token,node->left);
+        parser_parameter(stream,token,node);
+        parser_parameterListRest(stream,token,node->left);
     }
     else if(token->type == TKN_CLOSING_PARENTHESES){
 
@@ -601,7 +601,7 @@ void parser_parametList(FILE*stream,token_t *token,AST_Node*node){
     }
 }
 
-void parser_paramet(FILE*stream,token_t *token,AST_Node *node){
+void parser_parameter(FILE*stream,token_t *token,AST_Node *node){
     //TODO ULOZENIE ID DO TABULKY
     *token =getToken(stream);
     if(token->type == TKN_COLON){
@@ -612,7 +612,7 @@ void parser_paramet(FILE*stream,token_t *token,AST_Node *node){
     }
 }
 
-void parser_parametListRest(FILE*stream,token_t *token,AST_Node *node){
+void parser_parameterListRest(FILE*stream,token_t *token,AST_Node *node){
     *token = getToken(stream);
 
     while(token->type!=TKN_CLOSING_PARENTHESES){
@@ -622,7 +622,7 @@ void parser_parametListRest(FILE*stream,token_t *token,AST_Node *node){
             if(token->type==TKN_ID){
                 create_node(NODE_PARAM,node);
                 node->name=token->string;
-                parser_paramet(stream,token,node);
+                parser_parameter(stream,token,node);
             }else{
                 //TODO ERROR
             }
@@ -644,43 +644,43 @@ void parser_statementRest(FILE*stream,token_t *token,AST_Node*node){
         switch(token->type){
             case TKN_MINUS:
                 create_node(NODE_EXP,node);
-                parser_expretion(stream,token,node);
+                parser_expression(stream,token,node);
                 break;
             case TKN_DIVISION_SLASH:
                 create_node(NODE_EXP,node);
-                parser_expretion(stream,token,node);
+                parser_expression(stream,token,node);
                 break;
             case TKN_TIMES:
                 create_node(NODE_EXP,node);
-                parser_expretion(stream,token,node);
+                parser_expression(stream,token,node);
                 break;
             case TKN_NOT_EQUAL:
                 create_node(NODE_EXP,node);
-                parser_expretion(stream,token,node);
+                parser_expression(stream,token,node);
                 break;
             case TKN_EQUAL:
                 create_node(NODE_EXP,node);
-                parser_expretion(stream,token,node);
+                parser_expression(stream,token,node);
                 break;
             case TKN_LESS:
                 create_node(NODE_EXP,node);
-                parser_expretion(stream,token,node);
+                parser_expression(stream,token,node);
                 break;
             case TKN_LESS_EQUAL:
                 create_node(NODE_EXP,node);
-                parser_expretion(stream,token,node);
+                parser_expression(stream,token,node);
                 break;
             case TKN_GREATER:
                 create_node(NODE_EXP,node);
-                parser_expretion(stream,token,node);
+                parser_expression(stream,token,node);
                 break;
             case TKN_GREATER_EQUAL:
                 create_node(NODE_EXP,node);
-                parser_expretion(stream,token,node);
+                parser_expression(stream,token,node);
                 break;
             case TKN_PLUS:
                 create_node(NODE_EXP,node);
-                parser_expretion(stream,token,node);
+                parser_expression(stream,token,node);
                 break;
             case TKN_OPENING_PARENTHESES:
                 create_node(NODE_ARG_LIST,node);
@@ -708,12 +708,12 @@ void parser_argumentList(FILE*stream,token_t *token,AST_Node *node){
     switch (token->type){
         case TKN_ID:
             node->name=token->string;
-            parser_expretion(stream,token,node);
+            parser_expression(stream,token,node);
             create_node(NODE_ARG_LIST,node->right);
             parser_argumentListRest(stream,token,node->right);
             break;
         case TKN_MINUS:
-            parser_expretion(stream,token,node);
+            parser_expression(stream,token,node);
             create_node(NODE_ARG_LIST,node->right);
             parser_argumentListRest(stream,token,node->right);
             break;
@@ -721,25 +721,25 @@ void parser_argumentList(FILE*stream,token_t *token,AST_Node *node){
 
         case TKN_INT:
             node->data_type=TYPE_INT;
-            parser_expretion(stream,token,node);
+            parser_expression(stream,token,node);
             create_node(NODE_ARG_LIST,node->right);
             parser_argumentListRest(stream,token,node->right);
             break;
         case TKN_DOUBLE:
             node->data_type=TYPE_DOUBLE;
-            parser_expretion(stream,token,node);
+            parser_expression(stream,token,node);
             create_node(NODE_ARG_LIST,node->right);
             parser_argumentListRest(stream,token,node->right);
             break;
         case TKN_UNIT:
             node->data_type=TYPE_UNIT;
-            parser_expretion(stream,token,node);
+            parser_expression(stream,token,node);
             create_node(NODE_ARG_LIST,node->right);
             parser_argumentListRest(stream,token,node->right);
             break;
         case TKN_STRING:
             node->data_type=TYPE_STRING;
-            parser_expretion(stream,token,node);
+            parser_expression(stream,token,node);
             create_node(NODE_ARG_LIST,node->right);
             parser_argumentListRest(stream,token,node->right);
             break;
@@ -757,7 +757,7 @@ void parser_argumentListRest(FILE* stream,token_t *token,AST_Node*node){
         *token = getToken(stream);
         if(token->type == TKN_COMMA){
             *token = getToken(stream);
-            parser_expretion(stream,token,node);
+            parser_expression(stream,token,node);
             create_node(NODE_ARG_LIST,node->next);
             parser_argumentListRest(stream,token,node->next);
         }else if(token->type == TKN_CLOSING_PARENTHESES){
@@ -768,7 +768,7 @@ void parser_argumentListRest(FILE* stream,token_t *token,AST_Node*node){
         }
 }
 
-Precedens get_precedens(Precedens_Symbol stack_symbol,Precedens_Symbol coming_symbol){
+Precedence get_precedence(Precedence_Symbol stack_symbol,Precedence_Symbol coming_symbol){
     switch (table[stack_symbol][coming_symbol]){
         case '>':
             return P_GREATER;
@@ -785,23 +785,23 @@ Precedens get_precedens(Precedens_Symbol stack_symbol,Precedens_Symbol coming_sy
     }
 } 
 
-void parser_expretion(FILE*stream,token_t *token,AST_Node *node){
-    Stack *stack = stack_iniciaize();
+void parser_expression(FILE*stream,token_t *token,AST_Node *node){
+    Stack *stack = stack_initialize();
     switch(token->type){
         case TKN_ID:
         case TKN_STRING:
         case TKN_INT:
         case TKN_DOUBLE:
         case TKN_UNIT:
-            Precedens precedence = get_precedens(PS_END,PS_ID);
+            Precedence precedence = get_precedence(PS_END,PS_ID);
             stack = stack_push(stack,STACK_TOKEN,precedence,token);
             break;
         case TKN_PLUS:
-            Precedens precedence = get_precedens(PS_END,PS_UNARYPLUS);
+            Precedence precedence = get_precedence(PS_END,PS_UNARYPLUS);
             stack = stack_push(stack,STACK_TOKEN,precedence,token);
             break;
         case TKN_MINUS:
-            Precedens precedence = get_precedens(PS_END,PS_UNARYMINUS);
+            Precedence precedence = get_precedence(PS_END,PS_UNARYMINUS);
             stack = stack_push(stack,STACK_TOKEN,precedence,token);
             break;
         default:

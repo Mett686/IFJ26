@@ -11,13 +11,13 @@ typedef enum{
 
 typedef struct Stack{
     Symbol_Category category;
-    Precedens_Symbol symbol;
-    Precedens recedece;
+    Precedence_Symbol symbol;
+    Precedence precedence;
     token_t token;
     Stack *next;
 }Stack;
 
 
-Stack* stack_iniciaize();
-Stack* stack_push(Stack *stack,Symbol_Category category,Precedens_Symbol symbol, token_t *token);
+Stack* stack_initialize();
+Stack* stack_push(Stack *stack,Symbol_Category category,Precedence_Symbol symbol, token_t *token);
 Stack* stack_pop(Stack *stack);

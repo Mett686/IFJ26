@@ -23,14 +23,14 @@ PS_ID,
 PS_UNARYPLUS,
 PS_UNARYMINUS,
 PS_COUNT
-}Precedens_Symbol;
+}Precedence_Symbol;
 
 typedef enum{
 P_GREATER,
 P_LESS,
 P_EQUAL,
 P_NONE
-}Precedens;
+}Precedence;
 
 static const char table [PS_COUNT][PS_COUNT] = {
     {'>','<','<','>','>','>','>','>','>','>','<','>','>','<','<','<'},
@@ -58,7 +58,7 @@ typedef enum{
 
 typedef struct Stack{
     Symbol_Category category;
-    Precedens_Symbol symbol;
+    Precedence_Symbol symbol;
     token_t token;
     struct Stack *next;
 }Stack_t;

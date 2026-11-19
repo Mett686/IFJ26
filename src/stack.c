@@ -4,7 +4,7 @@
 #include "scanner.h"
 #include "parser.h"
 
-Stack * stack_iniciaize(){
+Stack * stack_initialize(){
     Stack *new_stack=calloc(1,sizeof(Stack));
     if(new_stack!=NULL){
         new_stack->next=NULL;
@@ -18,21 +18,21 @@ Stack * stack_iniciaize(){
     }
 }
 
-Stack* stack_push_precedence(Stack *stack,Precedens precedens){
+Stack* stack_push_precedence(Stack *stack,Precedence precedence){
     Stack *new_stack = calloc(1,sizeof(Stack));
     if(new_stack==NULL){
         //ERROR
         return NULL;
     }else{
         new_stack->next = stack;
-        new_stack->precedenc = precedens;
+        new_stack->precedence = precedence;
         return new_stack;
     }
 }
 
 
 
-Stack* stack_push(Stack *stack,Symbol_Category category,Precedens_Symbol symbol, token_t *token){
+Stack* stack_push(Stack *stack,Symbol_Category category,Precedence_Symbol symbol, token_t *token){
     Stack *new_stack = malloc(sizeof(Stack));
     if(new_stack==NULL){
         //ERROR
