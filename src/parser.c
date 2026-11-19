@@ -48,6 +48,9 @@ AST_Node* parser(FILE* stream){
 
         if(token.type == TKN_DEF || token.type == TKN_AT_MAIN){
             parser_definitionList(stream,&token,tree);
+        }else{
+            //ERROR
+            exit(2);
         }
     }
     else {
@@ -129,6 +132,8 @@ void parser_defFunction(FILE*stream,token_t *token,AST_Node*node){
 
                     if (token->type == TKN_ASSING){
                         parser_body(stream,token,node->right);
+                    }else{
+                        exit(2);
                     }
                 }
                 else if(token->type == TKN_ASSING){
@@ -137,11 +142,15 @@ void parser_defFunction(FILE*stream,token_t *token,AST_Node*node){
                     parser_body(stream,token,node->right);
                 
                 }else{
+                    exir(2);
                     //ERROR
                 }             
             }else{
+                exit(2);
                 //ERROR
             }
+        }else{
+            exit(2);
         }
     }else{
         exit(2);
@@ -181,27 +190,34 @@ void parser_defMainFunc(FILE* stream,token_t *token,AST_Node *node){
                             if(token->type == TKN_ASSING){
 
                                 parser_body(stream,token,node->right);
+                            }else{
+                                exit(2);
                             }
 
                         }else if (token->type == TKN_ASSING){
                             node->data_type=TYPE_NULL;
                             parser_body(stream,token, node->right);
                         }else{
+                            exit(2);
                             //ERROR
                         }
                         
                     }else{
+                        exit(2);
                         //ERROR
                     }
 
                 }else{
+                    exit(2);
                     //ERROR
                 }
             }else{
+                exit(2);
                 //ERROR
             }
 
         }else{
+            exit(2);
             //ERROR
         }
     }
@@ -230,23 +246,29 @@ void parser_defMainFunc(FILE* stream,token_t *token,AST_Node *node){
 
                         if(token->type == TKN_ASSING){
                             parser_body(stream,token,node->right);
+                        }else{
+                            exit(2);
                         }
 
                     }else if(token->type == TKN_ASSING){
                         node->data_type=TYPE_NULL;
                         parser_body(stream,token,node->right);
                     }else{
+                        exit(2);
                         //ERROR
                     }
                         
                 }else{
+                    exit(2);
                     //ERROR
                 }
 
             }else{
+                exit(2);
                 //ERROR
             }
         }else{
+            exit(2);
             //ERROR
         }
     }
@@ -436,6 +458,7 @@ void parser_valDef(FILE*stream,token_t *token,AST_Node *node){
             parser_expression(stream,token,node->right);
 
         }else{
+            exit(2);
             //ERROR
         }
     }else{
@@ -464,6 +487,7 @@ void parser_varDef (FILE* stream,token_t *token,AST_Node *node){
             parser_expression(stream,token,node->right);
         
         }else{
+            exit(2);
             //ERROR
         }
     }else{
@@ -622,6 +646,7 @@ void parser_parameterListRest(FILE*stream,token_t *token,AST_Node *node){
                 node->name=token->string;
                 parser_parameter(stream,token,node);
             }else{
+                exit(2);
                 //TODO ERROR
             }
         }else{
@@ -754,10 +779,12 @@ void parser_argumentList(FILE*stream,token_t *token,AST_Node *node){
 void parser_argumentListRest(FILE* stream,token_t *token,AST_Node*node){
         *token = getToken(stream);
         if(token->type == TKN_COMMA){
+
             *token = getToken(stream);
             parser_expression(stream,token,node);
             create_node(NODE_ARG_LIST,node->next);
             parser_argumentListRest(stream,token,node->next);
+
         }else if(token->type == TKN_CLOSING_PARENTHESES){
             //epsilon
         }else{
@@ -778,7 +805,8 @@ Precedence get_precedence(Precedence_Symbol stack_symbol,Precedence_Symbol comin
             return P_EQUAL;
             break;
         default:
-            return P_NONE;
+            exit(2);
+            
             break;
     }
 } 
@@ -804,7 +832,7 @@ void parser_expression(FILE*stream,token_t *token,AST_Node *node){
             stack = stack_push(stack,STACK_TOKEN,precedence,token);
             break;
         default:
-            //ERROR
+            exit(2);//ERROR
         break;
     }
 }
