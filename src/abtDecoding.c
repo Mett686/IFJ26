@@ -26,7 +26,7 @@ static htabItem_t* blockCheck(const char* name, htab_t* hashTable, htab_t* local
 }
 
 static void addBuiltin(htab_t* hashTable, const char* name, int returnType, int paramCount, const int* params) {
-    htabItem_t* item = htabWriteNew(hashTable, (char*)name, NULL);
+    htabItem_t* item = htabWriteNew(hashTable, (char*)name);
     if (item == NULL) {
         exit(99);
     }
@@ -108,7 +108,7 @@ static void registerUserFunctions(AST_Node* ptr, htab_t* hashTable, int* mainFun
                 }
             }
 
-            htabItem_t* funcData = htabWriteNew(hashTable, funcName, NULL);
+            htabItem_t* funcData = htabWriteNew(hashTable, funcName);
             if (funcData == NULL) exit(99);
             funcData->isFunction = true;
             funcData->isMutable = false;
@@ -258,7 +258,7 @@ static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTabl
                 exit(4);
             }
 
-            htabItem_t* varData = htabWriteNew(targetTable, varName, NULL);
+            htabItem_t* varData = htabWriteNew(targetTable, varName);
             if (varData == NULL) exit(99);
             varData->isFunction = false;
             varData->isMutable = isMutable;
@@ -333,7 +333,7 @@ static void recursiveSemanticCheck(AST_Node* ptr, htab_t* hashTable, htab_t* loc
     switch (ptr->node_type) {
         case NODE_FUNC_DEF:
         case NODE_FUNC_DEF_MAIN: {
-            htab_t* funcScope = htabCreate(503, 0);
+            htab_t* funcScope = htabCreate(503);
             if (funcScope == NULL) exit(99);
             funcScope->parent = localHashTable;
 
@@ -343,7 +343,7 @@ static void recursiveSemanticCheck(AST_Node* ptr, htab_t* hashTable, htab_t* loc
                     fprintf(stderr, "semantická analýza: duplicitní název parametru '%s'.\n", param->name);
                     exit(4);
                 }
-                htabItem_t* pItem = htabWriteNew(funcScope, param->name, NULL);
+                htabItem_t* pItem = htabWriteNew(funcScope, param->name);
                 if (pItem == NULL) exit(99);
                 pItem->isFunction = false;
                 pItem->isMutable = false;
@@ -361,7 +361,7 @@ static void recursiveSemanticCheck(AST_Node* ptr, htab_t* hashTable, htab_t* loc
             recursiveSemanticCheck(ptr->left, hashTable, localHashTable, currentReturnType);
             checkNode(ptr, hashTable, localHashTable, currentReturnType);
 
-            htab_t* thenScope = htabCreate(503, 0);
+            htab_t* thenScope = htabCreate(503);
             if (thenScope == NULL) exit(99);
             thenScope->parent = localHashTable;
             recursiveSemanticCheck(ptr->right, hashTable, thenScope, currentReturnType);
@@ -371,7 +371,7 @@ static void recursiveSemanticCheck(AST_Node* ptr, htab_t* hashTable, htab_t* loc
         }
 
         case NODE_ELSE: {
-            htab_t* elseScope = htabCreate(503, 0);
+            htab_t* elseScope = htabCreate(503);
             if (elseScope == NULL) exit(99);
             elseScope->parent = localHashTable;
             recursiveSemanticCheck(ptr->left, hashTable, elseScope, currentReturnType);
@@ -382,7 +382,7 @@ static void recursiveSemanticCheck(AST_Node* ptr, htab_t* hashTable, htab_t* loc
             recursiveSemanticCheck(ptr->left, hashTable, localHashTable, currentReturnType);
             checkNode(ptr, hashTable, localHashTable, currentReturnType);
 
-            htab_t* whileScope = htabCreate(503, 0);
+            htab_t* whileScope = htabCreate(503);
             if (whileScope == NULL) exit(99);
             whileScope->parent = localHashTable;
             recursiveSemanticCheck(ptr->right, hashTable, whileScope, currentReturnType);
