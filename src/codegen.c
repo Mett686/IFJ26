@@ -3,7 +3,9 @@
 
 
 #include "codegen.h"
+#include <errno.h>
 #include <stdio.h>
+#include <string.h>
 
 #define FR_S(frame) \
   (frame == GF ? "GF" : (frame == TF ? "TF" : "LF"))
@@ -16,6 +18,7 @@ static void generate_node(const AST_Node* node)
   static unsigned scopecnt = 0;
   static bool generateDEFVAR = true;
   if (node == NULL) {
+    fprintf(stderr, "codegen: encountered a null AST node\n");
     return;
   }
   Frame_t prevFrame = frame;
@@ -155,13 +158,23 @@ bool codeGenerate(FILE *output, const AST_Node *root)
     fprintf(stderr, "codegen: output stream is required\n");
     return false;
   }
+  if (root == NULL) {
+    fprintf(stderr, "codegen: AST root is required\n");
+    return false;
+  }
   file = output;
 
   if (fputs(".IFJcode26\n", output) == EOF) {
-    fprintf(stderr, "codegen: failed to write output\n");
+    fprintf(stderr, "codegen: failed to write output: %s\n",
+            errno != 0 ? strerror(errno) : "unknown output error");
     return false;
   }
 
   generate_node(root);
-  return !ferror(output);
+  if (ferror(output)) {
+    fprintf(stderr, "codegen: failed while writing output: %s\n",
+            errno != 0 ? strerror(errno) : "unknown output error");
+    return false;
+  }
+  return true;
 }

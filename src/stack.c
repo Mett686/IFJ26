@@ -5,6 +5,14 @@
 #include "scanner.h"
 #include "parser.h"
 
+static void stack_exit(int code, const char *file, int line)
+{
+    fprintf(stderr, "stack: allocation fatal error %d at %s:%d\n", code, file, line);
+    exit(code);
+}
+
+#define exit(code) stack_exit(code, __FILE__, __LINE__)
+
 Stack * stack_initialize(){
     Stack *new_stack=calloc(1,sizeof(Stack));
     if(new_stack!=NULL){

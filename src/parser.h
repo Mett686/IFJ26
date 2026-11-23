@@ -57,7 +57,7 @@ static const char table [PS_COUNT][PS_COUNT] = {
 };
 
 AST_Node* AST_inicial(void);
-void create_node(Node_type type, AST_Node *node);
+AST_Node* create_node(Node_type type);
 AST_Node* parser(FILE *stream);
 void parser_prolog(FILE *stream, token_t *token);
 void parser_definitionList(FILE *stream, token_t *token, AST_Node *tree);

@@ -8,14 +8,54 @@
 #include "htab.h"
 #include "abtDecoding.h"
 #include "codegen.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 
-int main () {
+int main(int argc, char** argv) {
     AST_Node* ast;
-    htab_t* htab = htabCreate(300);
+    FILE* input = stdin;
+    htab_t* htab;
 
-    ast = parser(stdin);
+    if (argc > 1) {
+        input = fopen(argv[1], "r");
+        if (input == NULL) {
+            fprintf(stderr, "main: cannot open input file '%s'\n", argv[1]);
+            return 1;
+        }
+    }
+
+    htab = htabCreate(300);
+    if (htab == NULL) {
+        fprintf(stderr, "main: failed to allocate semantic symbol table\n");
+        if (input != stdin) {
+            fclose(input);
+        }
+        return 99;
+    }
+
+    ast = parser(input);
+    if (ast == NULL) {
+        fprintf(stderr, "main: parser failed to create the syntax tree\n");
+        htabDestroy(htab);
+        if (input != stdin) {
+            fclose(input);
+        }
+        return 99;
+    }
     semanticCheck(ast, htab);
-    codeGenerate(stdout, ast);
+    if (!codeGenerate(stdout, ast)) {
+        fprintf(stderr, "main: code generation failed\n");
+        htabDestroy(htab);
+        if (input != stdin) {
+            fclose(input);
+        }
+        return 99;
+    }
+
+    if (input != stdin) {
+        fclose(input);
+    }
+    htabDestroy(htab);
     return 0;
 }
