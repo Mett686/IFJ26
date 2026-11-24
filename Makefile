@@ -37,9 +37,13 @@ test: scannertest
 zip:
 	zip -r $(nazev).zip src/ dokumentace.pdf rozdeleni Makefile tests/
 
+doc:
+	pdflatex dokumentace.tex
+	pdflatex dokumentace.tex
+
 clean:
 	rm -f $(OBJS) $(DEPS) tests/scanner_tester.o tests/scanner_tester.d scanner_test $(nazev).zip
 
 -include $(DEPS) tests/scanner_tester.d
 
-.PHONY: all build test clean zip scannertest
+.PHONY: all build test clean zip scannertest documentation

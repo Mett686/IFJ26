@@ -1,0 +1,299 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[czech]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[a4paper,margin=2.3cm]{geometry}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{automata,arrows.meta,positioning,shapes.geometric}
+\usepackage{longtable,array,booktabs}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{microtype}
+
+\hypersetup{
+  hidelinks,
+  pdftitle={Dokumentace projektu IFJ26},
+  pdfauthor={Tým IFJ26}
+}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45em}
+\renewcommand{\arraystretch}{1.12}
+\lstset{
+  basicstyle=\ttfamily\small,
+  columns=fullflexible,
+  keepspaces=true,
+  breaklines=true
+}
+\newcommand{\placeholder}[1]{\textcolor{red}{\textbf{[DOPLNIT: #1]}}}
+\newcommand{\idnt}[1]{\texttt{#1}}
+
+\begin{titlepage}
+\begin{center}
+  {\LARGE \textbf{Dokumentace projektu IFJ26}}\\[0.5cm]
+  {\large překladač zdrojového jazyka}\\[1.2cm]
+\end{center}
+
+\textbf{Varianta:} \placeholder{vv-BVS/TRP-izp}\\[0.25cm]
+
+\begin{table}[h]
+\centering
+\begin{tabular}{>{\bfseries}p{3.7cm}p{4.2cm}p{2.8cm}p{2.7cm}}
+\toprule
+Jméno a příjmení & VUT login & Osobní číslo & Podíl bodů \\
+\midrule
+\textbf{Martin Knotek} & \placeholder{xknotem00} & \placeholder{DOPLNUJTE} & \placeholder{např. 34\,\%} \\
+Filip Maxa & \placeholder{VUT login} & \placeholder{DOPLNUJTE} & \placeholder{např. 33\,\%} \\
+\placeholder{Jméno třetího člena} & \placeholder{xmiklej00} & \placeholder{DOPLNUJTE} & \placeholder{např. 33\,\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Identifikátory implementovaných rozšíření:}
+\placeholder{např. BASE, FUNEXP; uvede se ``-'' při jejich absenci}\\[0.25cm]
+
+\textbf{Odkaz na Git repozitář:}\\
+\url{https://github.com/Mett686/IFJ26}\\[0.25cm]
+
+\textbf{Rozdělení bodů:}
+\placeholder{doložit součtem 100\,\% a povinně odůvodnit odchylky od rovnoměrného rozdělení}\\
+\textbf{Součet bodů:} \placeholder{100\,\%}
+
+\vfill
+\begin{center}
+  {\small Zdrojový text dokumentace: \texttt{dokumentace.tex}}
+\end{center}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\section{Rozdělení práce v týmu}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Martin Knotek -- } \placeholder{syntaktická/sémantická analýza, generování kódu, integrační práce apod.}
+  \item \textbf{Filip Maxa -- } \placeholder{lexikální analyzátor, tokenizace, vstupní automat a testování skeneru apod.}
+  \item \textbf{\placeholder{Třetí člen} -- } \placeholder{konkrétní moduly a odpovědnost; doplňte před odevzdáním.}
+\end{itemize}
+
+\placeholder{Odchylky od rovnoměrného rozdělení bodů zdůvodněte několika konkrétními větami; zaměřte se na rozsah, složitost a důsledky práce, nikoli na spotřebovaný čas.}
+
+\section{Spolupráce, testování a formátování}
+\subsection{Spolupráce a code review}
+\placeholder{Zde stručně popište větvení, PR, povinná schválení, minimální počet reviewerů a pravidlo pro merge (např. zelené CI a jedno schválení).}
+
+\subsection{Testování}
+\placeholder{Uveďte jednotkami vět či odrážek jednotkové testy skeneru, tabulky symbolů a sémantiky, integrační a regresní testy a způsob přípravy negativních vstupů.}
+
+\subsubsection{Použité testovací příkazy}
+\begin{lstlisting}
+make build
+make test
+./compiler vstup.ifj26
+\end{lstlisting}
+
+\subsection{Styl formátování kódu}
+\placeholder{Doplňte odsazení, pojmenování typů a funkcí, délku řádků, použití \texttt{clang-format}/editorconfig či interní konvence.}
+
+\section{Architektura překladače}
+\subsection{Přehled komponent}
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  node distance=7mm and 10mm,
+  module/.style={rectangle,rounded corners,draw=black,fill=blue!5,
+                 minimum height=11mm,minimum width=31mm,align=center},
+  data/.style={rectangle,draw=gray,dashed,fill=yellow!8,
+               minimum height=8mm,minimum width=27mm,align=center},
+  io/.style={rectangle,rounded corners,draw=black,fill=green!8,
+             minimum height=10mm,minimum width=22mm,align=center},
+  arrow/.style={-{Latex[length=2mm]},thick}
+]
+\node[io] (in) {Zdrojový text};
+\node[module,below=of in] (scanner) {Lexikální analyzátor\\\texttt{scanner.c/.h}};
+\node[data,below=of scanner] (tokens) {Tokiny\\\texttt{token\_t}};
+\node[module,below=of tokens] (parser) {Syntaktický analyzátor\\\texttt{parser.c/.h}};
+\node[data,below=of parser] (ast) {Abstraktní synt. strom\\\texttt{AST\_Node}};
+\node[module,below=of ast] (semantic) {Sémantická analýza\\\texttt{abtDecoding.c/.h}};
+\node[data,below=of semantic] (validated) {Validovaný AST + tabulka symbolů};
+\node[module,below=of validated] (codegen) {Generátor kódu\\\texttt{codegen.c/.h}};
+\node[io,below=of codegen] (out) {IFJcode26};
+\draw[arrow] (in) -- (scanner);
+\draw[arrow] (scanner) -- node[right]{tokeny} (tokens);
+\draw[arrow] (tokens) -- (parser);
+\draw[arrow] (parser) -- node[right]{AST} (ast);
+\draw[arrow] (ast) -- (semantic);
+\draw[arrow] (semantic) -- node[right]{kontrola typů, oborů a zdrojů} (validated);
+\draw[arrow] (validated) -- (codegen);
+\draw[arrow] (codegen) -- (out);
+
+\node[data,left=of parser] (stack) {Prioritní zásobník\\\texttt{stack.c/.h}};
+\draw[arrow] (stack) -- (parser);
+\node[data,left=of semantic] (htab) {Rozbalená htab\\\texttt{htab.c/.h}};
+\draw[arrow] (htab) -- (semantic);
+\end{tikzpicture}
+\caption{Blokové schéma toku dat}
+\end{figure}
+
+\subsection{Popis toku dat}
+\placeholder{Jasně popište vstup a výstup, formáty \texttt{token\_t}, AST, položek tabulky symbolů a cílového IFJcode26. U každé komponenty zdůrazněte odpovědnost a vazby.}
+
+\section{Lexikální analyzátor}
+\subsection{Návrh konečného automatu}
+Lexikální analyzátor čte vstupní soubor po značkách a vrací jeden \texttt{token\_t}.
+Implementace stavového automatu je umístěna ve \texttt{scanner.c}; stavy jsou definovány
+ve \texttt{scanner\_private.h}. Indentace je řešena zvláštními stavem a zásobníkem.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[->,>=Stealth,shorten >=1pt,auto,node distance=3.2cm,
+                    every state/.style={minimum size=9mm}]
+\node[state,initial] (start) {START};
+\node[state] (id) [above right=of start] {ID};
+\node[state] (int) [right=of start] {CELÉ ČÍSLO};
+\node[state] (dbl) [below right=of start] {DES. ČÍSLO};
+\node[state] (str) [below=of start] {ŘETĚZEC};
+\node[state] (op) [left=of start] {OPERÁTOR};
+\node[state] (indent) [above=of start] {ODSAZENÍ};
+\node[state,accepting] (token) [below=of str] {PŘEDEJ TOKEN};
+\draw (start) edge[bend left=12] node{písmeno/_} (id);
+\draw (start) edge node{číslice} (int);
+\draw (start) edge[bend left=12] node{tečka po číslici} (dbl);
+\draw (start) edge node{"} (str);
+\draw (start) edge[bend left=12] node{+-*/<>=!} (op);
+\draw (start) edge node{začátek řádku} (indent);
+\draw (id) edge[bend left=12] node{klíčové slovo} (token);
+\draw (int) edge node{. e E} (dbl);
+\draw (str) edge node{uzavírací znak} (token);
+\draw (op) edge[bend left=12] node{komplet. lexém} (token);
+\draw (indent) edge[bend left=12] node{urovniou/DEDENT} (token);
+\draw (int) edge[bend left=12] node{oddělovač} (token);
+\draw (dbl) edge[bend left=12] node{oddělovač} (token);
+\draw (token) edge[bend right=18] node{další znak} (start);
+\end{tikzpicture}
+\caption{Zjednodušený přehled stavů lexikálního analyzátoru}
+\end{figure}
+
+\placeholder{Nahraďte zjednodušený diagram úplným automatem podle skutečných stavů \texttt{EState}; vyznačte počáteční stav, koncové stavy, přechody a lexikální chyby. Slovně popište odlišnosti od standardního modelu DFA.}
+
+\subsection{Základní lexikální pravidla}
+\begin{itemize}
+  \item identifikátor: \placeholder{doplňte přesné pravidlo};
+  \item celočíselný literál: \placeholder{doplňte přesné pravidlo a rozsah};
+  \item desetinný a exponenciální literál: \placeholder{doplňte přesné pravidlo};
+  \item řetězec: \placeholder{jednotlivý i vícenásobný řetězec a escape sekvence};
+  \item komentáře: \placeholder{formát a pravidla pro blokové/řádkové komentáře};
+  \item odchylky v odsazení: \placeholder{kolik mezer znamená úroveň a zpracování EOF po odsazení}.
+\end{itemize}
+
+\section{Syntaktický analyzátor}
+\subsection{LL gramatika}
+\placeholder{Úplnou gramatiku přepište do sloupců níže. Zachovejte terminály, neterminály, epsilon a jednoznačné názvy pravidel. Výchozí neterminál je \texttt{<program>}.}
+\[
+\begin{array}{rcl}
+\langle program\rangle &\to& \texttt{import ifj26.* NEWLINE }\langle definitions\rangle\\
+\langle definitions\rangle &\to& \langle definition\rangle\ \langle definitions\rangle\mid\varepsilon\\
+\placeholder{\langle dalšíNeterminál\rangle} &\to& \placeholder{\langle praváStrana\rangle}\\
+\end{array}
+\]
+\textit{Poznámka:} Náhradní sada pravidel je založena na souboru
+\texttt{SyntaktickyAnalizPravidla.txt}; před odevzdáním ji doplňte podle zdrojové implementace.
+
+\subsection{LL tabulka}
+\begin{table}[ht]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{l|*{8}{c}}
+Neterminál & import & def & @main & ID & if & while & return & \$ \\
+\hline
+$\langle program\rangle$ & \placeholder{č. pravidla} & & & & & & & \\
+$\langle definitions\rangle$ & & \placeholder{} & \placeholder{} & & & & & \\
+$\langle statement\rangle$ & & & & \placeholder{} & \placeholder{} & \placeholder{} & \placeholder{} & \\
+$\placeholder{\langle další\rangle}$ & & & & & & & & \\
+\end{tabular}
+\caption{LL syntaktická tabulka; doplňte všechna pravidla a neterminály}
+\end{table}
+
+\subsection{Precedenční analýza výrazů}
+Výrazy jsou analyzované shora dolů v \texttt{parser.c} a pomocí priority zásobníku
+vyplněného pomocnými funkcemi ze \texttt{stack.c}. Precedence symbolů a operátorů je
+definovaná statickou tabulkou \texttt{table} ve \texttt{parser.h}.
+
+\begin{table}[ht]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.2pt}
+\begin{tabular}{l|*{16}{c}}
+ & + & * & / & = & $>$ & $<$ & $\leq$ & $\geq$ & $\neq$ & - & ( & ) & \$ & ID & \placeholder{U+} & \placeholder{U-} \\
+\hline
++ & $>$ & $<$ & $<$ & $>$ & $>$ & $>$ & $>$ & $>$ & $>$ & $>$ & $<$ & $>$ & $>$ & $<$ & $<$ & $<$ \\
+* & $>$ & $>$ & $>$ & $>$ & $>$ & $>$ & $>$ & $>$ & $>$ & $>$ & $<$ & $>$ & $>$ & $<$ & $<$ & $<$ \\
+\placeholder{doplňte} & & & & & & & & & & & & & & & & \\
+\end{tabular}
+\caption{Precedenční tabulka implementovaná ve \texttt{parser.h}}
+\end{table}
+\placeholder{Přidejte úplnou tabulku 16$\times$16 ze zdrojového kódu nebo její čitelnou ekvivalentní formu. Tabulku musí odpovídat stejná priority, asociativita a pravidla pro závorky.}
+
+\section{Sémantická analýza a symbolová tabulka}
+\placeholder{Popište kontrolu definic, redefinic, typu proměnných a funkcí, kompatibility typů,
+návratových hodnot, oborů platnosti a povinnosti definice @main.}
+
+Implementace využívá rozbalenou hash tabulku \texttt{htab\_t}.
+Položka \texttt{htabItem\_t} obsahuje klíč, kontext, mutabilitu, funkční parametry a návratový typ.
+\placeholder{Uveďte přesnou významovou a životnostní sémantiku lokálních a globálních položek.}
+
+\section{Generování cílového kódu}
+\placeholder{Popište průchod AST, přidělování rámců a proměnných, výrazů, podmínek, cyklů,
+volání funkcí a mapování IFJ26 typů na IFJcode26. Uveďte známá omezení implementace.}
+
+\subsection{Mezikód}
+\placeholder{Popsat \texttt{TACInstruction}/operandovou reprezentaci, pokud je použita, a jejímu vztahu ke generovanému \texttt{IFJcode26}.}
+
+\section{Stručný popis modulů}
+\begin{longtable}{p{3.4cm}p{11.2cm}}
+\toprule
+Soubory & Úloha a význam \\
+\midrule
+\texttt{main.c} & \placeholder{Řízení vstupu, alokace symbolové tabulky, volání parseru, sémantické kontroly a generování výstupu.} \\
+\texttt{scanner.c/.h}, \texttt{scanner\_private.h} & \placeholder{Stavový automat, lexikální tokeny, vypočet odsazení a řetězcové hodnoty.} \\
+\texttt{parser.c/.h} & \placeholder{LL rekurzivní části, precedenční analýza a konstrukce AST.} \\
+\texttt{ast.h} & \placeholder{Typy uzlů, operátorů, dat a stromová reprezentace programu.} \\
+\texttt{stack.c/.h} & \placeholder{Práce s terminály/neterminály a daty priority zásobníku při analýze výrazů.} \\
+\texttt{abtDecoding.c/.h} & \placeholder{Průchod AST a sémantické kontroly, hlášení chyb a typová dedukce.} \\
+\texttt{htab.c/.h}, \texttt{htab\_private.h} & \placeholder{Datová struktura tabulky symbolů, hashování, lookup a rozbalování oborů.} \\
+\texttt{codegen.c/.h} & \placeholder{Generování instrukcí IFJcode26 z validovaného AST.} \\
+\texttt{tac.h} & \placeholder{Definice tříadresných instrukcí/operandů, pokud je tento modul aktivně součástí implementace. Jinak jej explicitně označte jako rozpracovanou či rezervní reprezentaci.} \\
+\texttt{SyntaktickyAnalizPravidla.txt} & \placeholder{Ladicí zápis LL pravidel použité jako východisko pro syntaktickou tabulku.} \\
+\bottomrule
+\end{longtable}
+
+\section{Použití umělé inteligence}
+\placeholder{Popsat nástroje a modely AI, účely použití, kontrolní postupy a případný vygenerovaný kód
+(např. návrh testů, ladění chyb, úprava dokumentace). Neuvádějte obsahový výstup AI, ale přesný způsob,
+jak byl ověřen člověkem a včetně informací vyžadovaných zadáním.}
+
+\section{Známá omezení a testované případy}
+\placeholder{Stručně uveďte, co implementace neumí nebo zatím nepodporuje, a co bylo ověřeno.}
+
+\section{Citace převzatých zdrojů}
+\begin{thebibliography}{9}
+\bibitem{ifj-zadani}
+Vysoké učení technické v Brně, \textit{Zadání projektu IFJ26}, akademický rok 2025/2026.
+\placeholder{Doplňte přesné vydání a URL použité zadání.}
+
+\bibitem{ifj-teorie}
+\placeholder{Úplná bibliografická citace přednáškových či oficiálních materiálů IFJ využitých při návrhu skeneru, parseru a generování kódu.}
+
+\bibitem{htab}
+\placeholder{Citace převzaté implementace tabulky symbolů, hashování nebo testů, pokud byla použita.}
+
+\bibitem{ai}
+\placeholder{Citace nebo interní URL využitého AI systému; podle požadavků zadání popište původ a účel převzatého návrhu/kódu.}
+\end{thebibliography}
+
+\end{document}
