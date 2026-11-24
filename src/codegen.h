@@ -1,5 +1,6 @@
-// codegen.h
+//codegen.h
 // Autor: Martin Knotek, FIT
+// Autor: Filip Maxa, FIT
 
 #ifndef CODEGEN_H
 #define CODEGEN_H

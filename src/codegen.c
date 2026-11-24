@@ -1,11 +1,13 @@
 // codegen.c
 // Autor: Martin Knotek, FIT
+// Autor: Filip Maxa, FIT
 
 
-#include "codegen.h"
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include "codegen.h"
+#include "stdFunc.h"
 
 #define FR_S(frame) \
   (frame == GF ? "GF" : (frame == TF ? "TF" : "LF"))
@@ -25,10 +27,11 @@ static void generate_node(const AST_Node* node)
 
   switch (node->node_type) {
     case NODE_PROGRAM:
-      // koren nedela nic protoze .IFJcode26 vypisuje codeGenerate
-      // jen vola generate_node na potomky
-      // nejakej je def_list
-      // chova se jako def list
+      // koren definuje zabudovane funkce, ".IFJcode26" vypisuje codeGenerate
+      // jinak se chova jako def list
+
+      // TODO
+
     case NODE_DEF_LIST:
       // levy je nejaky def (? konstanty promenne)
       // pravy je node_def_list
