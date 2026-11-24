@@ -20,7 +20,6 @@ static void generate_node(const AST_Node* node)
   static unsigned scopecnt = 0;
   static bool generateDEFVAR = true;
   if (node == NULL) {
-    fprintf(stderr, "codegen: encountered a null AST node\n");
     return;
   }
   Frame_t prevFrame = frame;
@@ -83,7 +82,6 @@ static void generate_node(const AST_Node* node)
       // levy exp
       // pravy telo (statemet lsit)
       // next je else !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      char* exp = node->left->name;
 
       // vyhodnoceni podminky
       generate_node(node->left);
@@ -148,11 +146,55 @@ static void generate_node(const AST_Node* node)
     case NODE_EXP:
       // todo
       // synove val var exp
+      generate_node(node->left);
+      generate_node(node->right);
+      expGenerate(node);
       break;
   }
 
   frame = prevFrame;
   return;
+}
+
+void expGenerate(AST_Node* node) {
+  switch (node->operator_type) { // TODO unarni, DIV vs IDIV, pretypovani
+    case OT_PLUS:
+      fprintf(file, "ADDS\n");
+      break;
+    case OT_MINUS:
+      fprintf(file, "SUBS\n");
+      break;
+    case OT_DIVIDE:
+      fprintf(file, "DIVS\n");
+      break;
+      case OT_EQUAL:
+      fprintf(file, "EQS\n");
+      break;
+    case OT_NOT_EQUAL:
+      fprintf(file, "EQS\n");
+      fprintf(file, "NOTS\n");
+      break;
+    case OT_LESS:
+      fprintf(file, "LTS\n");
+      break;
+    case OT_GREATER:
+      fprintf(file, "GTS\n");
+      break;
+    case OT_LESS_EQUAL:
+      fprintf(file, "GTS\n");
+      fprintf(file, "NOTS\n");
+      break;
+    case OT_GREATER_EQUAL:
+      fprintf(file, "LTS\n");
+      fprintf(file, "NOTS\n");
+      break;
+    case OT_TIMES:
+      fprintf(file, "MULS\n");
+    // Boolthen
+    case OT_AND:
+    case OT_OR:
+      break;
+  }
 }
 
 bool codeGenerate(FILE *output, const AST_Node *root)

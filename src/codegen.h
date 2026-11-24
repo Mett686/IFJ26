@@ -7,7 +7,6 @@
 
 #include <stdbool.h>
 #include <stdio.h>
-
 #include "ast.h"
 
 typedef enum{
@@ -23,6 +22,6 @@ bool codeGenerate(FILE *output, const AST_Node *root);
 bool defvarPregen(AST_Node* node);
 
 // Generates expressions
-bool expGenerate(AST_Node* node);
+void expGenerate(AST_Node* node);
 
 #endif
