@@ -1,9 +1,11 @@
+//autor: xmiklej00,
 #ifndef AST_H
 #define AST_H
 
 #include <stdbool.h>
 
 typedef enum{
+NODE_BODY,
 NODE_PROGRAM, // --
 // left - nejaka def
 // right - DEF_LIST
@@ -48,6 +50,8 @@ NODE_EXP // TODO
 }Node_type;
 
 typedef enum{
+OT_UNARY_PLUS,
+OT_UNARY_MINUS,
 OT_PLUS,
 OT_MINUS,
 OT_DIVIDE,
