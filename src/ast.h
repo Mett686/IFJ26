@@ -51,6 +51,7 @@ typedef enum{
 OT_PLUS,
 OT_MINUS,
 OT_DIVIDE,
+OT_IDIVIDE,
 OT_EQUAL,
 OT_NOT_EQUAL,
 OT_LESS,
@@ -59,7 +60,8 @@ OT_LESS_EQUAL,
 OT_GREATER_EQUAL,
 OT_TIMES,
 OT_AND,
-OT_OR
+OT_OR,
+OT_CONCAT,
 }Operator_type;
 
 typedef enum{

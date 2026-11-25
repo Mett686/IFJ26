@@ -120,6 +120,46 @@ static void registerUserFunctions(AST_Node* ptr, htab_t* hashTable, int* mainFun
     }
 }
 
+static AST_Node* wrapWithNode(Node_type ntype, AST_Node* child) {
+    if (child == NULL) {
+        return NULL;
+    }
+
+    AST_Node* conv = calloc(1, sizeof(AST_Node));
+    if (conv == NULL) {
+        fprintf(stderr, "semantická analýza: selhala alokace uzlu konverze.\n");
+        exit(99);
+    }
+
+    conv->node_type = ntype;
+    conv->data_type = child->data_type;
+    conv->left = child;
+    conv->right = NULL;
+    conv->next = NULL;
+
+    return conv;
+}
+
+static AST_Node* wrapLastExprInReturn(AST_Node* body) {
+    if (body == NULL) {
+        return NULL;
+    }
+
+    if (body->next == NULL) {
+        return wrapWithNode(NODE_RETURN, body);
+    }
+
+    AST_Node* curr = body;
+    while (curr->next != NULL && curr->next->next != NULL) {
+        curr = curr->next;
+    }
+
+    if (curr->next != NULL) {
+        curr->next = wrapWithNode(NODE_RETURN, curr->next);
+    }
+    return body;
+}
+
 static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTable, int currentReturnType) {
     int leftType  = (parent->left  != NULL) ? (int)parent->left->data_type  : -1;
     int rightType = (parent->right != NULL) ? (int)parent->right->data_type : -1;
@@ -141,9 +181,16 @@ static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTabl
             switch (parent->operator_type) {
                 case OT_PLUS:
                     if (leftType == TYPE_STRING && rightType == TYPE_STRING) {
+                        //pretypovani OT_PLUS na OT_CONCAT
+                        parent->operator_type = OT_CONCAT;
                         parent->data_type = TYPE_STRING;
                     } else if (isNumericType(leftType) && isNumericType(rightType)) {
                         parent->data_type = (leftType == TYPE_DOUBLE || rightType == TYPE_DOUBLE) ? TYPE_DOUBLE : TYPE_INT;
+                        if (leftType == TYPE_INT) {
+                            parent->left = wrapWithNode(NODE_EXP, parent->left);
+                        } else if (rightType == TYPE_INT) {
+                            parent->right = wrapWithNode(NODE_EXP, parent->right);
+                        }
                     } else {
                         fprintf(stderr, "semantická analýza: nekompatibilní typy u operátoru '+'.\n");
                         exit(6);
@@ -154,7 +201,22 @@ static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTabl
                 case OT_TIMES:
                 case OT_DIVIDE:
                     if (isNumericType(leftType) && isNumericType(rightType)) {
-                        parent->data_type = (leftType == TYPE_DOUBLE || rightType == TYPE_DOUBLE) ? TYPE_DOUBLE : TYPE_INT;
+                        if (leftType == TYPE_DOUBLE || rightType == TYPE_DOUBLE) {
+                            parent->data_type = TYPE_DOUBLE;
+                        } else {
+                            parent->data_type = TYPE_INT;
+                        }
+                        if (leftType == TYPE_INT && rightType == TYPE_INT && parent->operator_type == OT_DIVIDE) {
+                            //pretypovani divide na idivide
+                            parent->operator_type = OT_IDIVIDE;
+                        }
+                        else if(leftType != rightType) {
+                            if (leftType == TYPE_INT) {
+                                parent->left = wrapWithNode(NODE_EXP, parent->left);
+                            } else if (rightType == TYPE_INT) {
+                                parent->right = wrapWithNode(NODE_EXP, parent->right);
+                            }
+                        }
                     } else {
                         fprintf(stderr, "semantická analýza: nekompatibilní typy v aritmetickém výrazu.\n");
                         exit(6);
@@ -186,6 +248,7 @@ static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTabl
 
                 case OT_AND:
                 case OT_OR:
+                {
                     if (leftType == TYPE_BOOL && rightType == TYPE_BOOL) {
                         parent->data_type = TYPE_BOOL;
                     } else {
@@ -193,7 +256,12 @@ static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTabl
                         exit(6);
                     }
                     break;
+                }
+                case OT_CONCAT:
+                case OT_IDIVIDE:
+                    break;
             }
+            
             break;
 
         case NODE_FUNC_CALL: {
@@ -218,6 +286,9 @@ static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTabl
                     if (!(expectedType == TYPE_DOUBLE && argType == TYPE_INT)) {
                         fprintf(stderr, "semantická analýza: chybný typ argumentu při volání '%s'.\n", funcName);
                         exit(5);
+                    } else {
+                        argNode->left = wrapWithNode(NODE_EXP, argNode->left);
+                        //konverze int na double
                     }
                 }
                 index++;
@@ -249,6 +320,9 @@ static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTabl
                 if (!(parent->data_type == TYPE_DOUBLE && initType == TYPE_INT)) {
                     fprintf(stderr, "semantická analýza: nekompatibilní typ při inicializaci '%s'.\n", varName);
                     exit(6);
+                } else{
+                    parent->left = wrapWithNode(NODE_EXP, parent->left);
+                    //konverze int na double
                 }
             }
 
@@ -285,6 +359,8 @@ static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTabl
                 if (!(target->returnType == TYPE_DOUBLE && exprType == TYPE_INT)) {
                     fprintf(stderr, "semantická analýza: nekompatibilní typ při přiřazení do '%s'.\n", varName);
                     exit(6);
+                } else{
+                    parent->left = wrapWithNode(NODE_EXP, parent->left);
                 }
             }
             break;
@@ -308,6 +384,10 @@ static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTabl
                 exit(6);
             }
             if (currentReturnType == TYPE_UNIT) {
+                if (parent->left != NULL){
+                    fprintf(stderr, "semantická analýza: funkce @main nesmí mít parametry.\n");
+                    exit(5);
+                }
                 break;
             }
             if (parent->left == NULL) {
@@ -318,6 +398,9 @@ static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTabl
                 if (!(currentReturnType == TYPE_DOUBLE && leftType == TYPE_INT)) {
                     fprintf(stderr, "semantická analýza: nekompatibilní návratový typ v return.\n");
                     exit(6);
+                } else {
+                    //konverze int na double
+                    parent->left = wrapWithNode(NODE_EXP, parent->left);
                 }
             }
             break;
@@ -354,6 +437,7 @@ static void recursiveSemanticCheck(AST_Node* ptr, htab_t* hashTable, htab_t* loc
             }
 
             recursiveSemanticCheck(ptr->right, hashTable, funcScope, ptr->data_type);
+            ptr->right = wrapLastExprInReturn(ptr->right);
             break;
         }
 
