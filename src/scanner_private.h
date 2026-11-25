@@ -32,16 +32,7 @@ typedef struct {
     char* str;
 } string_t;
 
-void stringAppend(string_t* string, int c){
-    if(string->length == string->capacity + 1){
-        string->str = realloc(string->str, string->capacity*2);
-        if(string->str == NULL)
-            exit(99);
-        string->capacity = string->capacity*2;
-    }
-    string->str[string->length++] = (char)c;
-    string->str[string->length] = '\0';
-}
+void stringAppend(string_t* string, int c);
 
 typedef struct {
     unsigned top;
@@ -49,15 +40,4 @@ typedef struct {
     unsigned* stack;
 } indentation_stack_t;
 
-
-indentation_stack_t* push(indentation_stack_t* stack, unsigned spaces){
-    if(stack->top + 1 == stack->capacity){
-        stack->stack = realloc(stack->stack, stack->capacity*2);
-        if(stack->stack == NULL)
-            exit(99);
-        stack->capacity *= 2;
-    }
-    stack->top++;
-    stack->stack[stack->top] = spaces;
-    return stack;
-}
+indentation_stack_t* push(indentation_stack_t* stack, unsigned spaces);
