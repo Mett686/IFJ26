@@ -33,6 +33,9 @@
 \newcommand{\placeholder}[1]{\textcolor{red}{\textbf{[DOPLNIT: #1]}}}
 \newcommand{\idnt}[1]{\texttt{#1}}
 
+
+\begin{document}
+
 \begin{titlepage}
 \begin{center}
   {\LARGE \textbf{Dokumentace projektu IFJ26}}\\[0.5cm]
@@ -140,7 +143,7 @@ make test
 \end{figure}
 
 \subsection{Popis toku dat}
-\placeholder{Jasně popište vstup a výstup, formáty \texttt{token\_t}, AST, položek tabulky symbolů a cílového IFJcode26. U každé komponenty zdůrazněte odpovědnost a vazby.}
+\placeholder{Jasně popište vstup a výstup, formáty \texttt{token\_t}, AST, položek tabulky symbolů a cílového IFJcode27. U každé komponenty zdůrazněte odpovědnost a vazby.}
 
 \section{Lexikální analyzátor}
 \subsection{Návrh konečného automatu}
@@ -160,10 +163,10 @@ ve \texttt{scanner\_private.h}. Indentace je řešena zvláštními stavem a zá
 \node[state] (op) [left=of start] {OPERÁTOR};
 \node[state] (indent) [above=of start] {ODSAZENÍ};
 \node[state,accepting] (token) [below=of str] {PŘEDEJ TOKEN};
-\draw (start) edge[bend left=12] node{písmeno/_} (id);
+\draw (start) edge[bend left=12] node{písmeno/\_} (id);
 \draw (start) edge node{číslice} (int);
 \draw (start) edge[bend left=12] node{tečka po číslici} (dbl);
-\draw (start) edge node{"} (str);
+\draw (start) edge node{\texttt{\char34}} (str);
 \draw (start) edge[bend left=12] node{+-*/<>=!} (op);
 \draw (start) edge node{začátek řádku} (indent);
 \draw (id) edge[bend left=12] node{klíčové slovo} (token);
@@ -197,7 +200,7 @@ ve \texttt{scanner\_private.h}. Indentace je řešena zvláštními stavem a zá
 \begin{array}{rcl}
 \langle program\rangle &\to& \texttt{import ifj26.* NEWLINE }\langle definitions\rangle\\
 \langle definitions\rangle &\to& \langle definition\rangle\ \langle definitions\rangle\mid\varepsilon\\
-\placeholder{\langle dalšíNeterminál\rangle} &\to& \placeholder{\langle praváStrana\rangle}\\
+\langle \mathrm{TODO}\rangle &\to& \mathrm{TODO}\\
 \end{array}
 \]
 \textit{Poznámka:} Náhradní sada pravidel je založena na souboru
@@ -214,7 +217,7 @@ Neterminál & import & def & @main & ID & if & while & return & \$ \\
 $\langle program\rangle$ & \placeholder{č. pravidla} & & & & & & & \\
 $\langle definitions\rangle$ & & \placeholder{} & \placeholder{} & & & & & \\
 $\langle statement\rangle$ & & & & \placeholder{} & \placeholder{} & \placeholder{} & \placeholder{} & \\
-$\placeholder{\langle další\rangle}$ & & & & & & & & \\
+$\langle \mathrm{TODO}\rangle$ & & & & & & & & \\
 \end{tabular}
 \caption{LL syntaktická tabulka; doplňte všechna pravidla a neterminály}
 \end{table}
