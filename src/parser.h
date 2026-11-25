@@ -86,7 +86,7 @@ void parser_argumentList(FILE *stream, token_t *token, AST_Node *node);
 void parser_argumentListRest(FILE *stream, token_t *token, AST_Node *node);
 Precedence parser_get_precedence(Precedence_Symbol stack_symbol, Precedence_Symbol coming_symbol);
 void parser_expression(FILE *stream, token_t *token, AST_Node *node);
-void parser_exp_to_tree(Stack *stack,AST_Node *tree);
+
 
 
 #endif

@@ -1,36 +1,101 @@
-parser: fatal error 2 at parser.c:1060
-parser: fatal error 2 at parser.c:1060
-parser: fatal error 2 at parser.c:1060
-parser: fatal error 2 at parser.c:1060
-parser: fatal error 2 at parser.c:1060
-parser: fatal error 2 at parser.c:457
-parser: fatal error 2 at parser.c:1060
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:900
+parser.c:657:28: runtime error: member access within null pointer of type 'struct AST_Node'
+AddressSanitizer:DEADLYSIGNAL
+=================================================================
+==75811==ERROR: AddressSanitizer: SEGV on unknown address 0x000000000010 (pc 0x55986d0949b9 bp 0x7ffe7652c3b0 sp 0x7ffe7652c380 T0)
+==75811==The signal is caused by a WRITE memory access.
+==75811==Hint: address points to the zero page.
+    #0 0x55986d0949b9 in parser_parameterListRest /home/miklej/code/IFJ/IFJ26/src/parser.c:657
+    #1 0x55986d094622 in parser_parameterList /home/miklej/code/IFJ/IFJ26/src/parser.c:628
+    #2 0x55986d08f310 in parser_defFunction /home/miklej/code/IFJ/IFJ26/src/parser.c:130
+    #3 0x55986d08ebfa in parser_definitionList /home/miklej/code/IFJ/IFJ26/src/parser.c:98
+    #4 0x55986d08e840 in parser /home/miklej/code/IFJ/IFJ26/src/parser.c:58
+    #5 0x55986d08d6bc in run_child /home/miklej/code/IFJ/IFJ26/src/parser_tests.c:735
+    #6 0x55986d08dd26 in main /home/miklej/code/IFJ/IFJ26/src/parser_tests.c:789
+    #7 0x71712742a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58
+    #8 0x71712742a28a in __libc_start_main_impl ../csu/libc-start.c:360
+    #9 0x55986d08c6c4 in _start (/home/miklej/code/IFJ/IFJ26/src/test_parser+0x256c4) (BuildId: 0fd54be446dfbbc941ce3a9da943529c3631d9b4)
+
+AddressSanitizer can not provide additional info.
+SUMMARY: AddressSanitizer: SEGV /home/miklej/code/IFJ/IFJ26/src/parser.c:657 in parser_parameterListRest
+==75811==ABORTING
+parser: fatal error 2 at parser.c:900
+
+=================================================================
+==75822==ERROR: LeakSanitizer: detected memory leaks
+
+Direct leak of 32 byte(s) in 1 object(s) allocated from:
+    #0 0x7171280fd9c7 in malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:69
+    #1 0x55986d08c9c3 in getToken /home/miklej/code/IFJ/IFJ26/src/parser_tests.c:44
+    #2 0x55986d090e94 in parser_body /home/miklej/code/IFJ/IFJ26/src/parser.c:317
+    #3 0x55986d08f7e3 in parser_defFunction /home/miklej/code/IFJ/IFJ26/src/parser.c:151
+    #4 0x55986d08ebfa in parser_definitionList /home/miklej/code/IFJ/IFJ26/src/parser.c:98
+    #5 0x55986d08e840 in parser /home/miklej/code/IFJ/IFJ26/src/parser.c:58
+    #6 0x55986d08d6bc in run_child /home/miklej/code/IFJ/IFJ26/src/parser_tests.c:735
+    #7 0x55986d08dd26 in main /home/miklej/code/IFJ/IFJ26/src/parser_tests.c:789
+    #8 0x71712742a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58
+    #9 0x71712742a28a in __libc_start_main_impl ../csu/libc-start.c:360
+    #10 0x55986d08c6c4 in _start (/home/miklej/code/IFJ/IFJ26/src/test_parser+0x256c4) (BuildId: 0fd54be446dfbbc941ce3a9da943529c3631d9b4)
+
+SUMMARY: AddressSanitizer: 32 byte(s) leaked in 1 allocation(s).
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:1063
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:1063
+parser: fatal error 2 at parser.c:1063
+parser: fatal error 2 at parser.c:1063
+parser: fatal error 2 at parser.c:1063
+parser: fatal error 2 at parser.c:455
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:1063
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:900
 parser: fatal error 2 at parser.c:68
 parser: fatal error 2 at parser.c:86
 parser: fatal error 2 at parser.c:63
 parser: fatal error 2 at parser.c:63
+parser: fatal error 2 at parser.c:900
 parser: fatal error 2 at parser.c:165
-parser: fatal error 2 at parser.c:635
+parser: fatal error 2 at parser.c:633
 parser: fatal error 2 at parser.c:145
-parser: fatal error 2 at parser.c:646
-parser: fatal error 2 at parser.c:668
-parser: fatal error 2 at parser.c:635
-parser: fatal error 2 at parser.c:309
-parser: fatal error 2 at parser.c:363
-parser: fatal error 2 at parser.c:363
-parser: fatal error 2 at parser.c:1060
-parser: fatal error 2 at parser.c:433
-parser: fatal error 2 at parser.c:1060
-parser: fatal error 2 at parser.c:474
-parser: fatal error 2 at parser.c:478
-parser: fatal error 2 at parser.c:474
-parser: fatal error 2 at parser.c:474
-parser: fatal error 2 at parser.c:474
-parser: fatal error 2 at parser.c:1060
-parser: fatal error 2 at parser.c:1060
-parser: fatal error 2 at parser.c:1060
-parser: fatal error 2 at parser.c:1060
-parser: fatal error 2 at parser.c:1060
-parser: fatal error 2 at parser.c:433
-parser: fatal error 2 at parser.c:788
-
+parser: fatal error 2 at parser.c:644
+parser: fatal error 2 at parser.c:666
+parser: fatal error 2 at parser.c:633
+parser: fatal error 2 at parser.c:307
+parser: fatal error 2 at parser.c:361
+parser: fatal error 2 at parser.c:361
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:1063
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:431
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:1063
+parser: fatal error 2 at parser.c:472
+parser: fatal error 2 at parser.c:476
+parser: fatal error 2 at parser.c:472
+parser: fatal error 2 at parser.c:472
+parser: fatal error 2 at parser.c:472
+parser: fatal error 2 at parser.c:1063
+parser: fatal error 2 at parser.c:1063
+parser: fatal error 2 at parser.c:1063
+parser: fatal error 2 at parser.c:1063
+parser: fatal error 2 at parser.c:826
+parser: fatal error 2 at parser.c:1063
+parser: fatal error 2 at parser.c:431
+parser: fatal error 2 at parser.c:900
+parser: fatal error 2 at parser.c:826
+parser: fatal error 2 at parser.c:791
+parser: fatal error 2 at parser.c:900

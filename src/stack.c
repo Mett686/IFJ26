@@ -17,7 +17,7 @@ Stack * stack_initialize(){
     Stack *new_stack=calloc(1,sizeof(Stack));
     if(new_stack!=NULL){
         new_stack->next=NULL;
-        new_stack->category=STACK_NONTERM;
+        new_stack->category=STACK_TERM;
         new_stack->symbol=PS_END;
         
         return new_stack;
