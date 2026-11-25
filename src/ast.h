@@ -73,13 +73,13 @@ TYPE_NULL
 
 typedef struct AST_Node{
     Node_type node_type;
-    Data_Type data_type;
     struct AST_Node* next;
     struct AST_Node* left;
     struct AST_Node* right;
-
+    
     char *name;
-
+    
+    Data_Type data_type;
     int int_value;
     double double_value;
     char*  string_value;
