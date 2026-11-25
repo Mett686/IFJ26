@@ -39,7 +39,6 @@ zip:
 
 doc:
 	pdflatex dokumentace.tex
-	pdflatex dokumentace.tex
 
 clean:
 	rm -f $(OBJS) $(DEPS) tests/scanner_tester.o tests/scanner_tester.d scanner_test $(nazev).zip

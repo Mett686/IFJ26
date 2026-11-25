@@ -1,0 +1,384 @@
+// PRINT
+CREATEFRAME
+LABEL print$1
+CREATEFRAME
+PUSHFRAME
+
+DEFVAR LF@value
+DEFVAR LF@type
+DEFVAR LF@isnil
+POPS LF@value
+TYPE LF@type LF@value
+EQ LF@isnil LF@type string@nil
+JUMPIFEQ print$1$unit LF@isnil bool@true
+WRITE LF@value
+JUMP print$1$end
+
+LABEL print$1$unit
+WRITE string@()
+
+LABEL print$1$end
+POPFRAME
+RETURN
+
+
+// READLINE
+LABEL readline$0
+CREATEFRAME
+PUSHFRAME
+
+DEFVAR LF@value
+DEFVAR LF@type
+DEFVAR LF@isnil
+READ LF@value string
+TYPE LF@type LF@value
+EQ LF@isnil LF@type string@nil
+JUMPIFEQ readline$0$eof LF@isnil bool@true
+PUSHS LF@value
+JUMP readline$0$end
+
+LABEL readline$0$eof
+PUSHS string@
+
+LABEL readline$0$end
+POPFRAME
+RETURN
+
+
+// READINT
+LABEL readint$0
+CREATEFRAME
+PUSHFRAME
+
+DEFVAR LF@value
+DEFVAR LF@type
+DEFVAR LF@isnil
+READ LF@value int
+TYPE LF@type LF@value
+EQ LF@isnil LF@type string@nil
+JUMPIFEQ readint$0$bad LF@isnil bool@true
+PUSHS LF@value
+JUMP readint$0$end
+
+LABEL readint$0$bad
+PUSHS int@0
+
+LABEL readint$0$end
+POPFRAME
+RETURN
+
+
+// READDOUBLE
+LABEL readdouble$0
+CREATEFRAME
+PUSHFRAME
+
+DEFVAR LF@value
+DEFVAR LF@type
+DEFVAR LF@isnil
+READ LF@value float
+TYPE LF@type LF@value
+EQ LF@isnil LF@type string@nil
+JUMPIFEQ readdouble$0$bad LF@isnil bool@true
+PUSHS LF@value
+JUMP readdouble$0$end
+
+LABEL readdouble$0$bad
+PUSHS float@0x0p+0
+
+LABEL readdouble$0$end
+POPFRAME
+RETURN
+
+
+// READBOOLEAN
+LABEL readboolean$0
+CREATEFRAME
+PUSHFRAME
+
+DEFVAR LF@value
+DEFVAR LF@type
+DEFVAR LF@isnil
+READ LF@value bool
+TYPE LF@type LF@value
+EQ LF@isnil LF@type string@nil
+JUMPIFEQ readboolean$0$bad LF@isnil bool@true
+PUSHS LF@value
+JUMP readboolean$0$end
+
+LABEL readboolean$0$bad
+PUSHS bool@false
+
+LABEL readboolean$0$end
+POPFRAME
+RETURN
+
+
+// READINTMAYBE
+LABEL readintmaybe$0
+CREATEFRAME
+PUSHFRAME
+
+DEFVAR LF@value
+DEFVAR LF@type
+DEFVAR LF@isnil
+READ LF@value int
+TYPE LF@type LF@value
+EQ LF@isnil LF@type string@nil
+JUMPIFEQ readintmaybe$0$bad LF@isnil bool@true
+PUSHS LF@value
+JUMP readintmaybe$0$end
+
+LABEL readintmaybe$0$bad
+PUSHS nil@nil
+
+LABEL readintmaybe$0$end
+POPFRAME
+RETURN
+
+
+// READDOUBLEMAYBE
+LABEL readdoublemaybe$0
+CREATEFRAME
+PUSHFRAME
+
+DEFVAR LF@value
+DEFVAR LF@type
+DEFVAR LF@isnil
+READ LF@value float
+TYPE LF@type LF@value
+EQ LF@isnil LF@type string@nil
+JUMPIFEQ readdoublemaybe$0$bad LF@isnil bool@true
+PUSHS LF@value
+JUMP readdoublemaybe$0$end
+
+LABEL readdoublemaybe$0$bad
+PUSHS nil@nil
+
+LABEL readdoublemaybe$0$end
+POPFRAME
+RETURN
+
+
+// TOSTR
+LABEL toStr$1
+CREATEFRAME
+PUSHFRAME
+
+DEFVAR LF@value
+DEFVAR LF@type
+DEFVAR LF@isnil
+DEFVAR LF@isint
+DEFVAR LF@isfloat
+DEFVAR LF@isbool
+DEFVAR LF@result
+POPS LF@value
+TYPE LF@type LF@value
+
+EQ LF@isnil LF@type string@nil
+JUMPIFEQ toStr$1$nil LF@isnil bool@true
+
+EQ LF@isint LF@type string@int
+JUMPIFEQ toStr$1$int LF@isint bool@true
+
+EQ LF@isfloat LF@type string@float
+JUMPIFEQ toStr$1$float LF@isfloat bool@true
+
+EQ LF@isbool LF@type string@bool
+JUMPIFEQ toStr$1$bool LF@isbool bool@true
+
+MOVE LF@result LF@value
+JUMP toStr$1$end
+
+LABEL toStr$1$nil
+MOVE LF@result string@()
+JUMP toStr$1$end
+
+LABEL toStr$1$int
+INT2STR LF@result LF@value
+JUMP toStr$1$end
+
+LABEL toStr$1$float
+FLOAT2STR LF@result LF@value
+JUMP toStr$1$end
+
+LABEL toStr$1$bool
+JUMPIFEQ toStr$1$booltrue LF@value bool@true
+MOVE LF@result string@false
+JUMP toStr$1$end
+
+LABEL toStr$1$booltrue
+MOVE LF@result string@true
+
+LABEL toStr$1$end
+PUSHS LF@result
+POPFRAME
+RETURN
+
+
+// TOINT
+LABEL toInt$1
+CREATEFRAME
+PUSHFRAME
+
+DEFVAR LF@value
+DEFVAR LF@result
+POPS LF@value
+FLOAT2INT LF@result LF@value
+PUSHS LF@result
+POPFRAME
+RETURN
+
+
+// FLOOR
+LABEL floor$1
+CREATEFRAME
+PUSHFRAME
+
+DEFVAR LF@value
+DEFVAR LF@truncated
+DEFVAR LF@truncatedfloat
+DEFVAR LF@negative
+DEFVAR LF@result
+POPS LF@value
+FLOAT2INT LF@truncated LF@value
+INT2FLOAT LF@truncatedfloat LF@truncated
+LT LF@negative LF@value LF@truncatedfloat
+JUMPIFEQ floor$1$done LF@negative bool@false
+SUB LF@truncated LF@truncated int@1
+INT2FLOAT LF@result LF@truncated
+JUMP floor$1$end
+
+LABEL floor$1$done
+MOVE LF@result LF@truncatedfloat
+
+LABEL floor$1$end
+PUSHS LF@result
+POPFRAME
+RETURN
+
+// strLength
+LABEL strLength$1
+CREATEFRAME
+PUSHFRAME
+
+DEFVAR LF@value
+DEFVAR LF@result
+POPS LF@value
+STRLEN LF@result LF@value
+PUSHS LF@result
+POPFRAME
+RETURN
+
+
+// SUBSTR
+LABEL subStr$3
+CREATEFRAME
+PUSHFRAME
+
+DEFVAR LF@value
+DEFVAR LF@start
+DEFVAR LF@end
+DEFVAR LF@length
+DEFVAR LF@index
+DEFVAR LF@char
+DEFVAR LF@result
+DEFVAR LF@tmp
+POPS LF@end
+POPS LF@start
+POPS LF@value
+
+STRLEN LF@length LF@value
+LT LF@tmp LF@start int@0
+JUMPIFEQ substr$invalid LF@tmp bool@true
+LT LF@tmp LF@end int@0
+JUMPIFEQ substr$invalid LF@tmp bool@true
+GT LF@tmp LF@start LF@end
+JUMPIFEQ substr$invalid LF@tmp bool@true
+GT LF@tmp LF@start LF@length
+JUMPIFEQ substr$invalid LF@tmp bool@true
+EQ LF@tmp LF@start LF@length
+JUMPIFEQ substr$invalid LF@tmp bool@true
+GT LF@tmp LF@end LF@length
+JUMPIFEQ substr$invalid LF@tmp bool@true
+
+MOVE LF@index LF@start
+MOVE LF@result string@
+
+LABEL substr$loop
+EQ LF@tmp LF@index LF@end
+JUMPIFEQ substr$done LF@tmp bool@true
+GETCHAR LF@char LF@value LF@index
+CONCAT LF@result LF@result LF@char
+ADD LF@index LF@index int@1
+JUMP substr$loop
+
+LABEL substr$invalid
+EXIT int@40
+
+LABEL substr$done
+PUSHS LF@result
+POPFRAME
+RETURN
+
+
+// ORD
+LABEL ord$2
+CREATEFRAME
+PUSHFRAME
+
+DEFVAR LF@value
+DEFVAR LF@index
+DEFVAR LF@length
+DEFVAR LF@tmp
+DEFVAR LF@result
+POPS LF@index
+POPS LF@value
+
+STRLEN LF@length LF@value
+EQ LF@tmp LF@length int@0
+JUMPIFEQ ord$2$minusone LF@tmp bool@true
+LT LF@tmp LF@index int@0
+JUMPIFEQ ord$2$minusone LF@tmp bool@true
+GT LF@tmp LF@index LF@length
+JUMPIFEQ ord$2$minusone LF@tmp bool@true
+EQ LF@tmp LF@index LF@length
+JUMPIFEQ ord$2$minusone LF@tmp bool@true
+
+STRI2INT LF@result LF@value LF@index
+PUSHS LF@result
+JUMP ord$2$end
+
+LABEL ord$2$minusone
+PUSHS int@-1
+
+LABEL ord$2$end
+POPFRAME
+RETURN
+
+
+// CHR
+LABEL chr$1
+CREATEFRAME
+PUSHFRAME
+
+DEFVAR LF@code
+DEFVAR LF@tmp
+DEFVAR LF@result
+POPS LF@code
+
+LT LF@tmp LF@code int@0
+JUMPIFEQ chr$1$invalid LF@tmp bool@true
+GT LF@tmp LF@code int@127
+JUMPIFEQ chr$1$invalid LF@tmp bool@true
+
+INT2CHAR LF@result LF@code
+PUSHS LF@result
+JUMP chr$1$end
+
+LABEL chr$1$invalid
+EXIT int@58
+
+LABEL chr$1$end
+POPFRAME
+RETURN
