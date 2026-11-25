@@ -56,6 +56,8 @@ AST_Node* parser(FILE* stream,htab_t *table){
 
         if(token.type == TKN_DEF || token.type == TKN_AT_MAIN){
             tree = parser_definitionList(stream,&token,tree,table);
+        }else if (token.type == TKN_EOF){
+            return tree;
         }else{
             //ERROR
             exit(2);
@@ -97,7 +99,6 @@ AST_Node* parser_definitionList(FILE* stream ,token_t *token,AST_Node *tree,htab
 
         }else if(token->type == TKN_AT_MAIN){
             tree->left = create_node(NODE_FUNC_DEF_MAIN);
-            parser_defFunction(stream,token,tree->left,table);
             parser_defMainFunc(stream,token,tree->left);
 
             
@@ -121,7 +122,7 @@ void parser_defFunction(FILE*stream,token_t *token,AST_Node*node,htab_t *table){
 
     if(token->type == TKN_ID){
         node->name = token->string;
-        table = htabWriteNew(table,token->string);
+        htabItem_t *htab_item = htabWriteNew(table,token->string);
         *token = getToken(stream);
 
         if(token->type == TKN_OPENING_PARENTHESES){
@@ -231,8 +232,6 @@ void parser_defMainFunc(FILE* stream,token_t *token,AST_Node *node){
     }
     else if(token->type == TKN_DEF){
         *token = getToken(stream);
-
-
 
         if(token->type == TKN_ID){
             node->name = token->string;
@@ -356,11 +355,13 @@ void parser_block(FILE* stream,token_t *token,AST_Node*node){
     if (token->type == TKN_INDENTATION){
         node->left = create_node(NODE_BODY);
         parser_statementList(stream,token,node->left);
-        *token = getToken(stream);
+        
+        
     }else{
         exit(2);
         //TODO ERROR
     }
+
 }
     
 
@@ -434,6 +435,9 @@ void parser_statementList(FILE* stream,token_t *token,AST_Node*node){
         node->right = create_node(NODE_STATEMENT_LIST);
         node=node->right;
         *token = getToken(stream);
+        if(token->type == TKN_NEWLINE){
+            *token = getToken(stream);
+        }
     }
 }
 
@@ -830,35 +834,53 @@ void parser_expression(FILE*stream,token_t *token,AST_Node *node){
     stack = stack_push(stack,STACK_TERM,coming_symbol,*token);
     
     *token = getToken(stream);
-    while(token->type != TKN_NEWLINE && 
+    if(token->type !=TKN_CLOSING_PARENTHESES){
+        while(token->type != TKN_NEWLINE && 
             token->type != TKN_THEN  &&
             token->type != TKN_DO &&
             token->type != TKN_SEMICOLON &&
-            token->type != TKN_COLON){
+            token->type != TKN_COMMA ){
         
-        coming_symbol = parser_TKN_to_PS(*token,stack);
-        stack_symbol = stack_top_precedence_symbol(stack);
-        precedence = parser_get_precedence(stack_symbol,coming_symbol);
-        if(precedence == P_GREATER){
-
-            parser_check_exp_rules(stack);
+            coming_symbol = parser_TKN_to_PS(*token,stack);
             stack_symbol = stack_top_precedence_symbol(stack);
             precedence = parser_get_precedence(stack_symbol,coming_symbol);
-            stack = stack_push_precedence(stack,precedence);
-            stack =stack_push(stack,STACK_TERM,coming_symbol,*token);
+            if(precedence == P_GREATER){
 
-        }else{
+                parser_check_exp_rules(stack);
+                stack_symbol = stack_top_precedence_symbol(stack);
+                precedence = parser_get_precedence(stack_symbol,coming_symbol);
+                stack = stack_push_precedence(stack,precedence);
+                stack =stack_push(stack,STACK_TERM,coming_symbol,*token);
 
-            stack = stack_push_precedence(stack,precedence);
-            stack =stack_push(stack,STACK_TERM,coming_symbol,*token);
+            }else{
+
+                stack = stack_push_precedence(stack,precedence);
+                stack =stack_push(stack,STACK_TERM,coming_symbol,*token);
+            }
+        
+            *token = getToken(stream);
         }
-        
-        
-        
-
-        *token = getToken(stream);
     }
 
+    coming_symbol = PS_END;
+    stack_symbol = stack_top_precedence_symbol(stack);
+    precedence = parser_get_precedence(stack_symbol,coming_symbol);
+    
+    if(precedence == P_GREATER){
+
+            parser_check_exp_rules(stack);
+            parser_exp_to_tree(stack,node);
+    }else{
+        exit(2);
+    }
+}
+
+void parser_exp_to_tree(Stack *stack,AST_Node *tree){
+    tree = stack->tree;
+    stack =stack_pop(stack);
+    if(stack_top_precedence_symbol(stack) != PS_END){
+        exit(2);
+    }
 }
 
 Stack* parser_check_exp_rules(Stack *stack){

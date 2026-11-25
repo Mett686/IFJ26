@@ -63,7 +63,8 @@ OT_LESS_EQUAL,
 OT_GREATER_EQUAL,
 OT_TIMES,
 OT_AND,
-OT_OR
+OT_OR,
+OT_ID
 }Operator_type;
 
 typedef enum{

@@ -62,9 +62,9 @@ static const char table [PS_COUNT][PS_COUNT] = {
 AST_Node* AST_inicial(void);
 AST_Node* create_node(Node_type type);
 AST_Node* parser(FILE *stream,htab_t* table);
-AST_Node* parser_prolog(FILE *stream, token_t *token);
-void parser_definitionList(FILE *stream, token_t *token, AST_Node *tree);
-void parser_defFunction(FILE *stream, token_t *token, AST_Node *node);
+void parser_prolog(FILE* stream,token_t *token );
+AST_Node* parser_definitionList(FILE *stream, token_t *token, AST_Node *tree,htab_t* table);
+void parser_defFunction(FILE *stream, token_t *token, AST_Node *node,htab_t * table);
 void parser_defMainFunc(FILE *stream, token_t *token, AST_Node *node);
 void parser_type(FILE *stream, token_t *token, AST_Node *node);
 void parser_body(FILE *stream, token_t *token, AST_Node *node);
@@ -86,7 +86,7 @@ void parser_argumentList(FILE *stream, token_t *token, AST_Node *node);
 void parser_argumentListRest(FILE *stream, token_t *token, AST_Node *node);
 Precedence parser_get_precedence(Precedence_Symbol stack_symbol, Precedence_Symbol coming_symbol);
 void parser_expression(FILE *stream, token_t *token, AST_Node *node);
-
+void parser_exp_to_tree(Stack *stack,AST_Node *tree);
 
 
 #endif
