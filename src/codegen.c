@@ -19,20 +19,24 @@ static void generate_node(const AST_Node* node)
   static Frame_t frame = GF;
   static unsigned scopecnt = 0;
   static unsigned cycleDepth = 0;
+  static unsigned whilecnt = 0;
+  static unsigned ifcnt = 0;
+  static char* funcName;
+
   if (node == NULL) {
     return;
   }
   Frame_t prevFrame = frame;
 
-  switch (node->node_type) {
+  switch (node->node_type) { // TODO assign, statement, program, cteni z tabulky
     case NODE_PROGRAM:
       // koren definuje zabudovane funkce, ".IFJcode26" vypisuje codeGenerate
       // jinak se chova jako def list
 
-      // TODO tisk vychozich funkci
+      // TODO tisk "vychozich" funkci
 
     case NODE_DEF_LIST:
-      // levy je nejaky def (? konstanty promenne)
+      // levy je nejaky def
       // pravy je node_def_list
       generate_node(node->left);
       generate_node(node->right);
@@ -44,14 +48,13 @@ static void generate_node(const AST_Node* node)
       // definuje funkci
       // volanim na levy podstrom zapise parametry
       // volanim na pravy podstrom zapise telo
+      funcName = node->name;
       scopecnt++;
       int argcnt = 0;
-      fprintf(file, "LABEL %s$%d\n", node->name, argcnt);
+      fprintf(file, "LABEL %s$%d\n", funcName, argcnt);
       fprintf(file, "CREATEFRAME\nPUSHFRAME\n");
       generate_node(node->left);
       generate_node(node->right);
-      // return?
-      fprintf(file, "POPFRAME\nRETURN\n");
       break;
     case NODE_PARAM:
       // parametr
@@ -66,13 +69,16 @@ static void generate_node(const AST_Node* node)
       generate_node(node->left);
       generate_node(node->right);
       break;
-      case NODE_STATEMENT:
+    case NODE_STATEMENT: // TODO nerikali jsme ze bude rovnou arg_list?
       // id funkce nebo prirazeni
       // jen levy podstrom arg_list, expression
       // TODO
       break;
     case NODE_RETURN:
       // levy exp (musi doplnovat semAn)
+      // TODO je to spravne?
+      generate_node(node->left);
+      fprintf(file, "POPFRAME\nRETURN\n");
       break;
     case NODE_VAL_DEF: // todo zapis do tabulky
       // id
@@ -87,32 +93,31 @@ static void generate_node(const AST_Node* node)
     case NODE_IF:
       // levy exp
       // pravy telo (statemet lsit)
-      // next je else !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      // next je else
 
       // vyhodnoceni podminky
       scopecnt++;
-      generate_node(node->left);
+      generate_node(node->left); // melo by na stack hodit navratovou vec
       fprintf(file, "PUSHS 0\n");
       // if
-      fprintf(file, "JUMPIFEQS $IF$$else\n"); //TODO replace with ↓
-      //fprintf(file, "JUMPIFEQS %s$IF$%d$else\n", functname, ifcnt);
+      unsigned myIfCnt = ifcnt;
+      ifcnt++;
+      fprintf(file, "JUMPIFEQS %s$IF$%d$else\n", funcName, myIfCnt);
       //telo if
       generate_node(node->right);
-      fprintf(file, "JUMP $IF$$end\n"); //TODO replace with ↓
-      //fprintf(file, "JUMP %s$IF$%d$end\n", functname, ifcnt);
+      fprintf(file, "JUMP %s$IF$%d$end\n", funcName, myIfCnt);
       //telo else
-      fprintf(file, "LABEL $IF$$else\n"); //TODO replace with ↓
-      //fprintf(file, "LABEL %s$IF$%d$else\n", functname, ifcnt); 
+      fprintf(file, "LABEL %s$IF$%d$else\n", funcName, myIfCnt); 
       generate_node(node->next);
       //konec a vycisteni stacku
-      fprintf(file, "LABEL $IF$$end\n"); //TODO replace with ↓
-      //fprintf(file, "LABEL %s$IF$%d$end\n", functname, ifcnt);
+      fprintf(file, "LABEL %s$IF$%d$end\n", funcName, myIfCnt);
       scopecnt++;
 
       break;
     case NODE_ELSE:
       // telo levy podstrom statement list
       scopecnt++;
+      generate_node(node->left);
 
       break;
     case NODE_WHILE_LOOP:
@@ -120,28 +125,25 @@ static void generate_node(const AST_Node* node)
       // pravy telo (statemet lsit)
       
       // pregenerace promennych
-      
+      unsigned myWhileCnt = whilecnt;
+      whilecnt++;
       cycleDepth++;
       scopecnt++;
       if(!cycleDepth) defvarPregen(node->right, scopecnt);
 
-      fprintf(file, "LABEL $while$$start\n"); //TODO replace with ↓
-      //fprintf(file, "LABEL %s$while$%d$start\n", func, whilcnt); 
+      fprintf(file, "LABEL %s$while$%d$start\n", funcName, myWhileCnt); 
       // vyhodnoceni podminky
       generate_node(node->left);
       fprintf(file, "PUSHS 0\n");
       scopecnt++;
       // podmineny skok
-      fprintf(file, "JUMPIFEQS $while$$end\n"); //TODO replace with ↓
-      //fprintf(file, "JUMPIFEQS %s$while$%d$end\n", func, whilecnt);
+      fprintf(file, "JUMPIFEQS %s$while$%d$end\n", funcName, myWhileCnt);
       fprintf(file, "CLEARS\n");
       // telo while bez defvar
       generate_node(node->right);
-      fprintf(file, "JUMP $while$$start\n"); //TODO replace with ↓
-      //fprintf(file, "JUMP %s$while$%d$start\n", func, whilcnt);
+      fprintf(file, "JUMP %s$while$%d$start\n", funcName, myWhileCnt);
       // konec
-      fprintf(file, "LABEL $while$$end\n"); //TODO replace with ↓
-      //fprintf(file, "LABEL %s$while$%d$end\n", func, whilecnt); 
+      fprintf(file, "LABEL %s$while$%d$end\n", funcName, myWhileCnt); 
       fprintf(file, "CLEARS\n");
       cycleDepth--;
       scopecnt++;
@@ -193,7 +195,7 @@ unsigned defvarPregen(AST_Node* node, unsigned scopecnt) {
 }
 
 void expGenerate(AST_Node* node) {
-  switch (node->operator_type) { // TODO unarni, DIV vs IDIV, pretypovani, push promenne
+  switch (node->operator_type) { // TODO unarni, DIV vs IDIV, pretypovani, nacteni promene na stack
     case OT_PLUS:
       fprintf(file, "ADDS\n");
       break;
@@ -217,12 +219,10 @@ void expGenerate(AST_Node* node) {
       fprintf(file, "GTS\n");
       break;
     case OT_LESS_EQUAL:
-      fprintf(file, "GTS\n");
-      fprintf(file, "NOTS\n");
+      fprintf(file, "GTS\nNOTS\n");
       break;
     case OT_GREATER_EQUAL:
-      fprintf(file, "LTS\n");
-      fprintf(file, "NOTS\n");
+      fprintf(file, "LTS\nNOTS\n");
       break;
     case OT_TIMES:
       fprintf(file, "MULS\n");
