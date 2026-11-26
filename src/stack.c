@@ -27,36 +27,38 @@ Stack * stack_initialize(){
     }
 }
 
-Stack* stack_push_precedence(Stack *stack,Precedence precedence){
+void stack_push_precedence(Stack **stack,Precedence precedence){
     Stack *new_stack = calloc(1,sizeof(Stack));
     if(new_stack==NULL){
         exit(99);
-        return NULL;
+        return;
     }else{
-        new_stack->next = stack;
+        new_stack->next = *stack;
         new_stack->precedence = precedence;
-        return new_stack;
+        stack = &new_stack;
+        return;
     }
 }
 
 
 
-Stack* stack_push(Stack *stack,Symbol_Category category,Precedence_Symbol symbol, token_t *token){
+void stack_push(Stack **stack,Symbol_Category category,Precedence_Symbol symbol, token_t *token){
     Stack *new_stack = malloc(sizeof(Stack));
     if(new_stack==NULL){
         exit(99);
-        return NULL;
+        return;
     }else{
-        new_stack->next = stack;
+        new_stack->next = *stack;
         new_stack->category=category;
         new_stack->symbol=symbol;
         new_stack->token = *token;
-        return new_stack;
+        stack = &new_stack;
+        return;
     }
 }
 
-Stack* stack_pop(Stack *stack){
-    Stack *tmp= stack->next;
+Stack* stack_pop(Stack **stack){
+    Stack *tmp= (*stack)->next;
     free(stack);
     
     return tmp;

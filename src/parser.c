@@ -829,15 +829,15 @@ void parser_expression(FILE*stream,token_t *token,AST_Node *node){
         case TKN_DOUBLE:
         case TKN_UNIT:
             precedence = get_precedence(PS_END,PS_ID);
-            stack = stack_push(stack,STACK_TOKEN,precedence,token);
+            stack_push(stack,STACK_TOKEN,precedence,token);
             break;
         case TKN_PLUS:
             precedence = get_precedence(PS_END,PS_UNARYPLUS);
-            stack = stack_push(stack,STACK_TOKEN,precedence,token);
+            stack_push(stack,STACK_TOKEN,precedence,token);
             break;
         case TKN_MINUS:
             precedence = get_precedence(PS_END,PS_UNARYMINUS);
-            stack = stack_push(stack,STACK_TOKEN,precedence,token);
+            stack_push(stack,STACK_TOKEN,precedence,token);
             break;
         default:
             exit(2);//ERROR

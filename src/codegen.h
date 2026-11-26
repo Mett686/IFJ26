@@ -19,7 +19,7 @@ typedef enum{
 bool codeGenerate(FILE *output, const AST_Node *root);
 
 // Pregenerates while loop variables 
-void defvarPregen(AST_Node* node, unsigned scopecnt);
+unsigned defvarPregen(AST_Node* node, unsigned scopecnt);
 
 // Generates expressions
 void expGenerate(AST_Node* node);
