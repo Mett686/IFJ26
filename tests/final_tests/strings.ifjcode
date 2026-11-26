@@ -1,0 +1,163 @@
+.IFJcode26
+
+# Tento program odpovida kodu v 'strings.scala'.
+# Vas prekladac samozrejme muze vytvorit uplne jiny vystupni kod.
+# Pozor, tento program nebude (semanticky) fungovat spravne, protoze zde
+# neni dokoncena implementace vestavene funkce subStr – zkuste si ji napsat sami.
+
+JUMP main
+
+LABEL without_line_feed
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@text
+DEFVAR LF@length
+DEFVAR LF@last
+DEFVAR LF@code
+POPS LF@text
+STRLEN LF@length LF@text
+JUMPIFEQ without_done LF@length int@0
+SUB LF@last LF@length int@1
+STRI2INT LF@code LF@text LF@last
+JUMPIFNEQ without_done LF@code int@10
+PUSHS LF@text
+PUSHS int@0
+PUSHS LF@last
+CALL substring
+POPFRAME
+RETURN
+LABEL without_done
+PUSHS LF@text
+POPFRAME
+RETURN
+
+LABEL reverse
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@text
+DEFVAR LF@length
+DEFVAR LF@index
+DEFVAR LF@result
+DEFVAR LF@code
+DEFVAR LF@character
+DEFVAR LF@check
+POPS LF@text
+STRLEN LF@length LF@text
+SUB LF@index LF@length int@1
+MOVE LF@result string@
+LABEL reverse_loop
+LT LF@check LF@index int@0
+JUMPIFEQ reverse_done LF@check bool@true
+STRI2INT LF@code LF@text LF@index
+INT2CHAR LF@character LF@code
+CONCAT LF@result LF@result LF@character
+SUB LF@index LF@index int@1
+JUMP reverse_loop
+LABEL reverse_done
+PUSHS LF@result
+POPFRAME
+RETURN
+
+LABEL prefix
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@text
+DEFVAR LF@length
+DEFVAR LF@end
+DEFVAR LF@check
+POPS LF@text
+STRLEN LF@length LF@text
+MOVE LF@end LF@length
+GT LF@check LF@length int@3
+JUMPIFEQ prefix_limit_done LF@check bool@false
+MOVE LF@end int@3
+LABEL prefix_limit_done
+JUMPIFEQ prefix_empty LF@length int@0
+PUSHS LF@text
+PUSHS int@0
+PUSHS LF@end
+CALL substring
+POPFRAME
+RETURN
+LABEL prefix_empty
+PUSHS string@
+POPFRAME
+RETURN
+
+# subStr(text,start,end): half-open interval, with source error 40.
+LABEL substring
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@text
+DEFVAR LF@start
+DEFVAR LF@end
+POPS LF@end
+POPS LF@start
+POPS LF@text
+
+# na funkci subStr v cilovem jazyce si musite prijit sami :)
+
+PUSHS LF@text
+POPFRAME
+RETURN
+
+LABEL half_length
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@length
+DEFVAR LF@number
+POPS LF@length
+INT2FLOAT LF@number LF@length
+DIV LF@number LF@number float@0x1p+1
+PUSHS LF@number
+POPFRAME
+RETURN
+
+LABEL show_line
+CREATEFRAME
+PUSHFRAME
+DEFVAR LF@text
+POPS LF@text
+WRITE LF@text
+WRITE string@\010
+PUSHS nil@nil
+POPFRAME
+RETURN
+
+LABEL main
+DEFVAR GF@raw
+DEFVAR GF@text
+DEFVAR GF@backwards
+DEFVAR GF@first
+DEFVAR GF@length
+DEFVAR GF@half
+DEFVAR GF@half_text
+DEFVAR GF@unit
+READ GF@raw string
+PUSHS GF@raw
+CALL without_line_feed
+POPS GF@text
+PUSHS GF@text
+CALL reverse
+POPS GF@backwards
+PUSHS GF@text
+CALL prefix
+POPS GF@first
+STRLEN GF@length GF@text
+PUSHS GF@length
+CALL half_length
+POPS GF@half
+FLOAT2STR GF@half_text GF@half
+PUSHS GF@backwards
+CALL show_line
+POPS GF@unit
+PUSHS GF@first
+CALL show_line
+POPS GF@unit
+WRITE string@length:\032
+WRITE GF@length
+WRITE string@\010half:\032
+PUSHS GF@half_text
+CALL show_line
+POPS GF@unit
+EXIT int@0
