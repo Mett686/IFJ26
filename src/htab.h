@@ -8,11 +8,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+struct htab;
 typedef struct htabItem {
   // Vlastnosti htab
   char* key;
   uint32_t hash;
-  htab_t* parent;
+  struct htab* parent;
 
   int nested;
   bool isMutable;
