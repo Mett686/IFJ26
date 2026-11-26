@@ -6,7 +6,8 @@
 #include "htab.h"
 
 typedef enum{
-NODE_BODY,
+NODE_BODY, // --
+// left - STATEMENT_LIST
 NODE_PROGRAM, // --
 // left - nejaka def
 // right - DEF_LIST
@@ -24,7 +25,6 @@ NODE_PARAM, //
 NODE_STATEMENT_LIST, // -- 
 // left - FUNC_CALL, ASSIGN, VAL, VAR, IF, WHILE, EXP, RETURN
 // right - STATEMENT_LIST
-NODE_STATEMENT, // -- vyuziva pouze synAn
 NODE_FUNC_CALL, //
 // left - ARG_LIST
 NODE_ASSIGN, // -- id
@@ -66,7 +66,7 @@ OT_GREATER_EQUAL,
 OT_TIMES,
 OT_AND,
 OT_OR,
-OT_CONCAT,
+OT_CONCAT
 }Operator_type;
 
 typedef enum{
