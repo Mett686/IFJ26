@@ -45,8 +45,9 @@ indentation_stack_t* push(indentation_stack_t* stack, unsigned spaces){
 indentation_stack_t indentationStack = {.top = 0, .capacity = (size_t)STACK_STARTING_CAPACITY, .stack = NULL};
 
 token_t getToken(FILE* stream) {
-    START_DEDENTATION:
+    START_GETTOKEN:
     static bool EOFreached = false;
+    static bool lastTknWasIndent = false;
     bool foundToken = false;
     static EState state = ST_START;
     token_t token = {.type = TKN_NONE};
@@ -598,8 +599,16 @@ token_t getToken(FILE* stream) {
         toDedent = (unsigned)indentationStack.top;
         indentationStack.top = 0;
         EOFreached = true;
-        goto START_DEDENTATION;
+        goto START_GETTOKEN;
     }
+    
+    if(token.type == TKN_NEWLINE) {
+        if (lastTknWasIndent){
+            goto START_GETTOKEN;
+        }
+        lastTknWasIndent = true;
+    } else lastTknWasIndent = false;
+
     if(token.type != TKN_ID && token.type != TKN_STRING && token.type != TKN_MULTILINE_STRING)
         free(string.str);
     return token;
