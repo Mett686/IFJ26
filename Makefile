@@ -9,6 +9,7 @@ SRCS = \
 	src/stack.c \
 	src/parser.c \
 	src/codegen.c \
+	src/astPrint.c \
 	src/htab.c \
 	src/abtDecoding.c
 

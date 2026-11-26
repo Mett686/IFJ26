@@ -3,13 +3,14 @@
 // Autor: Filip Maxa, FIT
 
 
+#include <stdio.h>
+#include <stdlib.h>
 #include "parser.h"
 #include "ast.h"
 #include "htab.h"
 #include "abtDecoding.h"
 #include "codegen.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "astPrint.h"
 
 
 int main(int argc, char** argv) {
@@ -43,6 +44,10 @@ int main(int argc, char** argv) {
         }
         return 99;
     }
+
+    // ast debug print
+    ast_print(stderr, ast);
+
     semanticCheck(ast, htab);
     if (!codeGenerate(stdout, ast)) {
         fprintf(stderr, "main: code generation failed\n");
