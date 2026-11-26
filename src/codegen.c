@@ -9,8 +9,11 @@
 #include "codegen.h"
 #include "stdFunc.h"
 
-#define FR_S(frame) \
+#define FRAME_S(frame) \
   (frame == GF ? "GF" : (frame == TF ? "TF" : "LF"))
+
+#define TYPE_S(type) \
+  (type == TYPE_DOUBLE ? "float" : "int")
 
 static FILE* file;
 
@@ -28,11 +31,10 @@ static void generate_node(const AST_Node* node)
   }
   Frame_t prevFrame = frame;
 
-  switch (node->node_type) { // TODO assign, statement, program, cteni z tabulky
+  switch (node->node_type) {
     case NODE_PROGRAM:
       // koren definuje zabudovane funkce, ".IFJcode26" vypisuje codeGenerate
       // jinak se chova jako def list
-
       fprintf(file, STD_FUNC_STR); // tisk standartnich funkci
 
     case NODE_DEF_LIST:
@@ -50,17 +52,29 @@ static void generate_node(const AST_Node* node)
       // volanim na pravy podstrom zapise telo
       funcName = node->name;
       scopecnt++;
-      int argcnt = 0;
-      fprintf(file, "LABEL %s$%d\n", funcName, argcnt);
+      fprintf(file, "LABEL %s\n", funcName);
       fprintf(file, "CREATEFRAME\nPUSHFRAME\n");
       generate_node(node->left);
       generate_node(node->right);
       break;
+    case NODE_FUNC_CALL:
+      // push args and call fun
+      generate_node(node->left);
+      fprintf(file, "CALL %s\n", node->name);
+      break;
+    case NODE_ASSIGN:
+      generate_node(node->left);
+      fprintf(file, "POPS LF@%s$%d\n", node->name, node->symbol->parent->tableId);
+      break;
     case NODE_PARAM:
       // parametr
       // levy dalsi param
-      fprintf(file, "DEFVAR LF@%s", node->name);
-      fprintf(file, "POPS LF@%s", node->name);
+      fprintf(file, "DEFVAR LF@%s$%s\n", funcName, node->name);
+      fprintf(file, "POPS LF@%s$%s\n", funcName, node->name);
+      generate_node(node->left);
+      break;
+    case NODE_BODY:
+      // koren statement listu
       generate_node(node->left);
       break;
     case NODE_STATEMENT_LIST:
@@ -69,26 +83,20 @@ static void generate_node(const AST_Node* node)
       generate_node(node->left);
       generate_node(node->right);
       break;
-    case NODE_STATEMENT: // TODO nerikali jsme ze bude rovnou arg_list?
-      // id funkce nebo prirazeni
-      // jen levy podstrom arg_list, expression
-      // TODO
-      break;
     case NODE_RETURN:
-      // levy exp (musi doplnovat semAn)
-      // TODO je to spravne?
+      // levy exp
       generate_node(node->left);
       fprintf(file, "POPFRAME\nRETURN\n");
       break;
-    case NODE_VAL_DEF: // todo zapis do tabulky
+    case NODE_VAL_DEF:
       // id
       // levy expression
-      if(!cycleDepth) fprintf(file, "DEFVAR %s@%s$VAL$%d\n", FR_S(frame), node->name, 0); //scope todo
+      if(!cycleDepth) fprintf(file, "DEFVAR %s@%s$%d\n", FRAME_S(frame), node->name, node->symbol->parent->tableId);
       break;
     case NODE_VAR_DEF:
       // id
       // levy expression
-      if(!cycleDepth) fprintf(file, "DEFVAR %s@%s$VAR$%d\n", FR_S(frame), node->name, 0); //scope todo
+      if(!cycleDepth) fprintf(file, "DEFVAR %s@%s$%d\n", FRAME_S(frame), node->name, node->symbol->parent->tableId);
       break;
     case NODE_IF:
       // levy exp
@@ -147,17 +155,16 @@ static void generate_node(const AST_Node* node)
       fprintf(file, "CLEARS\n");
       cycleDepth--;
       scopecnt++;
-
       break;
     case NODE_ARG_LIST:
       // levy exp
       // pravy arg_list
-      generate_node(node->left);
       generate_node(node->right);
+      generate_node(node->left);
       break;
     case NODE_EXP:
-      // todo
       // synove val var exp
+      if(node->node_type == OT_UNARY_MINUS) fprintf(file, "PUSHS %s@0\n", TYPE_S(node->node_type));
       generate_node(node->left);
       generate_node(node->right);
       expGenerate(node);
@@ -195,7 +202,9 @@ unsigned defvarPregen(AST_Node* node, unsigned scopecnt) {
 }
 
 void expGenerate(AST_Node* node) {
-  switch (node->operator_type) { // TODO unarni, DIV vs IDIV, pretypovani, nacteni promene na stack
+  switch (node->operator_type) { // TODO pretypovani, nacteni promene na stack
+    case OT_UNARY_MINUS:
+      fprintf(file, "SUBS\n");
     case OT_PLUS:
       fprintf(file, "ADDS\n");
       break;
@@ -205,7 +214,10 @@ void expGenerate(AST_Node* node) {
     case OT_DIVIDE:
       fprintf(file, "DIVS\n");
       break;
-      case OT_EQUAL:
+    case OT_IDIVIDE:
+      fprintf(file, "IDIVS\n");
+      break;
+    case OT_EQUAL:
       fprintf(file, "EQS\n");
       break;
     case OT_NOT_EQUAL:
@@ -226,6 +238,12 @@ void expGenerate(AST_Node* node) {
       break;
     case OT_TIMES:
       fprintf(file, "MULS\n");
+      break;
+    case OT_CONCAT:
+      fprintf(file, "POPS GF@CONCAT$$$0\nPOPS GF@CONCAT$$$1\n");
+      fprintf(file, "CONCAT GF@CONCAT$$$0 GF@CONCAT$$$0 GF@CONCAT$$$1\n");
+      fprintf(file, "PUSHS GF@CONCAT$$$0\n");
+      break;
     // Boolthen TODO
     case OT_AND:
     case OT_OR:

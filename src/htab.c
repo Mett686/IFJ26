@@ -30,6 +30,7 @@ uint32_t hashFunction(char* key, uint32_t offset) {
 // n is the capacity, table is allocate ~2times bigger
 htab_t* htabCreate(uint32_t n) {
   htab_t* t = malloc(sizeof(htab_t));
+  static unsigned tableId = 0;
   if(t) {
     uint32_t capacity = findCapacity(n);
     t->table = malloc(capacity * sizeof(htabItem_t));
@@ -40,6 +41,8 @@ htab_t* htabCreate(uint32_t n) {
     t->capacity = capacity;
     t->size = 0;
     t->threshold = (capacity*3)>>2;
+    t->tableId = tableId;
+    tableId++;
     t->parent = NULL;
     for(uint32_t i = 0; i < capacity; i++) {
       memset(&t->table[i], 0, sizeof(htabItem_t));

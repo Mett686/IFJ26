@@ -12,6 +12,7 @@ typedef struct htabItem {
   // Vlastnosti htab
   char* key;
   uint32_t hash;
+  htab_t* parent;
 
   int nested;
   bool isMutable;
@@ -30,6 +31,8 @@ typedef struct htab {
   uint32_t size;       // number of items in table
   uint32_t threshold;  // when the table is too full
   htabItem_t* table;
+  unsigned tableId;
+
   struct htab *parent;
 } htab_t;
 
