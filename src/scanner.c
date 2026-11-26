@@ -174,6 +174,10 @@ token_t getToken(FILE* stream) {
                 string.str[1] = '\0';
                 string.length = 1;
             }
+            else if (c == 'E' || c == 'e'){
+                state = ST_EXP_PREFIX;
+                stringAppend(&string, c);
+            }
             else {
                 ungetc(c, stream);
                 token.type = TKN_INT;
