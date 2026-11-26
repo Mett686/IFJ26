@@ -636,11 +636,11 @@ void parser_varDef (FILE* stream,token_t *token,AST_Node *node){
                     token->type == TKN_LESS_EQUAL||
                     token->type == TKN_GREATER ||
                     token->type == TKN_GREATER_EQUAL){
+
                         Stack* stack = stack_initialize();
                         Precedence_Symbol coming_symbol = parser_TKN_to_PS(tmp,stack);
                         Precedence_Symbol stack_symbol = stack_top_precedence_symbol(stack);
                         Precedence precedence = parser_get_precedence(stack_symbol,coming_symbol);
-
                         stack = stack_push_precedence(stack,precedence);
                         stack = stack_push(stack,STACK_TERM,coming_symbol,tmp);
                         parser_expression(stream,token,node,stack);
@@ -650,7 +650,6 @@ void parser_varDef (FILE* stream,token_t *token,AST_Node *node){
                         Precedence_Symbol coming_symbol = parser_TKN_to_PS(tmp,stack);
                         Precedence_Symbol stack_symbol = stack_top_precedence_symbol(stack);
                         Precedence precedence = parser_get_precedence(stack_symbol,coming_symbol);
-
                         stack = stack_push_precedence(stack,precedence);
                         stack = stack_push(stack,STACK_TERM,coming_symbol,tmp);
                         parser_expression(stream,token,node,stack);
@@ -771,21 +770,21 @@ void parser_returnRest(FILE* stream,token_t *token,AST_Node*node){
                     token->type == TKN_LESS_EQUAL||
                     token->type == TKN_GREATER ||
                     token->type == TKN_GREATER_EQUAL){
+
                         Stack* stack = stack_initialize();
                         Precedence_Symbol coming_symbol = parser_TKN_to_PS(tmp,stack);
                         Precedence_Symbol stack_symbol = stack_top_precedence_symbol(stack);
                         Precedence precedence = parser_get_precedence(stack_symbol,coming_symbol);
-
                         stack = stack_push_precedence(stack,precedence);
                         stack = stack_push(stack,STACK_TERM,coming_symbol,tmp);
                         parser_expression(stream,token,node,stack);
 
                     }else if (token->type == TKN_NEWLINE|| token->type == TKN_SEMICOLON){
+
                         Stack* stack = stack_initialize();
                         Precedence_Symbol coming_symbol = parser_TKN_to_PS(tmp,stack);
                         Precedence_Symbol stack_symbol = stack_top_precedence_symbol(stack);
                         Precedence precedence = parser_get_precedence(stack_symbol,coming_symbol);
-
                         stack = stack_push_precedence(stack,precedence);
                         stack = stack_push(stack,STACK_TERM,coming_symbol,tmp);
                         parser_expression(stream,token,node,stack);
@@ -925,10 +924,10 @@ void parser_statementRest(FILE*stream,token_t *token,AST_Node*node){
                         Precedence_Symbol coming_symbol = parser_TKN_to_PS(tmp,stack);
                         Precedence_Symbol stack_symbol = stack_top_precedence_symbol(stack);
                         Precedence precedence = parser_get_precedence(stack_symbol,coming_symbol);
-
                         stack = stack_push_precedence(stack,precedence);
                         stack = stack_push(stack,STACK_TERM,coming_symbol,tmp);
                         parser_expression(stream,token,node,stack);
+
                     }else{
                         exit(2);
                     }
@@ -943,10 +942,10 @@ void parser_statementRest(FILE*stream,token_t *token,AST_Node*node){
                     Precedence_Symbol coming_symbol = parser_TKN_to_PS(id,stack);
                     Precedence_Symbol stack_symbol = stack_top_precedence_symbol(stack);
                     Precedence precedence = parser_get_precedence(stack_symbol,coming_symbol);
-
                     stack = stack_push_precedence(stack,precedence);
                     stack = stack_push(stack,STACK_TERM,coming_symbol,id);
                     parser_expression(stream,token,node,stack);
+
             }else{
                     exit(2);
                     //ERROR
@@ -968,7 +967,6 @@ void parser_statementRest(FILE*stream,token_t *token,AST_Node*node){
                 Precedence_Symbol coming_symbol = parser_TKN_to_PS(id,stack);
                 Precedence_Symbol stack_symbol = stack_top_precedence_symbol(stack);
                 Precedence precedence = parser_get_precedence(stack_symbol,coming_symbol);
-                       
                 stack = stack_push_precedence(stack,precedence);
                 stack = stack_push(stack,STACK_TERM,coming_symbol,id);
                 parser_expression(stream,token,node,stack);
@@ -1060,7 +1058,6 @@ void parser_expression_inicial(FILE*stream,token_t *token,AST_Node *node){
         Precedence_Symbol coming_symbol = parser_TKN_to_PS(*token,stack);
         Precedence_Symbol stack_symbol = stack_top_precedence_symbol(stack);
         Precedence precedence = parser_get_precedence(stack_symbol,coming_symbol);
-
         stack = stack_push_precedence(stack,precedence);
         stack = stack_push(stack,STACK_TERM,coming_symbol,*token);
         *token = getToken(stream);
@@ -1087,7 +1084,9 @@ void parser_expression(FILE*stream,token_t *token,AST_Node *node,Stack *stack){
                 Precedence_Symbol coming_symbol = parser_TKN_to_PS(*token,stack);
                 Precedence_Symbol stack_symbol = stack_top_precedence_symbol(stack);
                 Precedence precedence = parser_get_precedence(stack_symbol,coming_symbol);
+
                 while(precedence == P_GREATER){
+
                     stack = parser_check_exp_rules(stack);
                     coming_symbol = parser_TKN_to_PS(*token,stack);
                     stack_symbol = stack_top_precedence_symbol(stack);
@@ -1109,9 +1108,11 @@ void parser_expression(FILE*stream,token_t *token,AST_Node *node,Stack *stack){
             }
         
         }
+
         Precedence_Symbol coming_symbol = PS_END;
         Precedence_Symbol stack_symbol = stack_top_precedence_symbol(stack);
         Precedence precedence = parser_get_precedence(stack_symbol,coming_symbol);
+
         while(precedence == P_GREATER){
             stack = parser_check_exp_rules(stack);
             coming_symbol = PS_END;
@@ -1128,6 +1129,7 @@ void parser_expression(FILE*stream,token_t *token,AST_Node *node,Stack *stack){
 }
 
 AST_Node* parser_exp_to_tree(Stack *stack,AST_Node *tree){
+
     tree = stack->tree;
     stack =stack_pop(stack);
     if(stack_top_precedence_symbol(stack) != PS_END){
@@ -1137,6 +1139,7 @@ AST_Node* parser_exp_to_tree(Stack *stack,AST_Node *tree){
 }
 
 Stack* parser_exp_unary_minus(Stack* stack,AST_Node *tree){
+
     AST_Node* unary = create_node(NODE_EXP);
             unary->left = tree;
             unary->operator_type = OT_UNARY_MINUS;
@@ -1294,6 +1297,7 @@ Stack* parser_check_exp_rules(Stack *stack){
  
 
 Precedence_Symbol parser_TKN_to_PS(token_t token,Stack*stack){
+    
     switch(token.type){
         case TKN_PLUS:
                 return PS_PLUS;
