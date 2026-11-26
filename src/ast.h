@@ -3,6 +3,7 @@
 #define AST_H
 
 #include <stdbool.h>
+#include "htab.h"
 
 typedef enum{
 NODE_BODY,
@@ -84,9 +85,10 @@ typedef struct AST_Node{
     struct AST_Node* right;
     
     char *name;
+    htabItem_t* symbol; // sem doplnit odkaz do TS na dany zaznam
     
     Data_Type data_type;
-    int int_value;
+    long long int int_value;
     double double_value;
     char*  string_value;
     bool bool_value;
