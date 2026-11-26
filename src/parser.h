@@ -29,8 +29,8 @@ PS_END,
 PS_ID,
 PS_UNARY_PLUS,
 PS_UNARY_MINUS,
-PS_COUNT,
-PS_EXP
+PS_EXP,
+PS_COUNT
 }Precedence_Symbol;
 
 typedef enum{
@@ -85,7 +85,7 @@ void parser_statementRest(FILE *stream, token_t *token, AST_Node *node);
 void parser_argumentList(FILE *stream, token_t *token, AST_Node *node);
 void parser_argumentListRest(FILE *stream, token_t *token, AST_Node *node);
 Precedence parser_get_precedence(Precedence_Symbol stack_symbol, Precedence_Symbol coming_symbol);
-void parser_expression(FILE *stream, token_t *token, AST_Node *node);
+void parser_expression_inicial(FILE *stream, token_t *token, AST_Node *node);
 
 
 

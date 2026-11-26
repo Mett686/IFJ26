@@ -33,5 +33,6 @@ Precedence_Symbol stack_top_precedence_symbol(Stack *stack);
 Stack* stack_push_AST_node(Stack *stack,AST_Node *tree);
 Stack* parser_check_exp_rules(Stack *stack);
 Precedence_Symbol parser_TKN_to_PS(token_t token,Stack*stack);
-void parser_exp_to_tree(Stack *stack,AST_Node *tree);
+AST_Node* parser_exp_to_tree(Stack *stack,AST_Node *tree);
+void parser_expression(FILE *stream, token_t *token, AST_Node *node,Stack* stack);
 #endif
