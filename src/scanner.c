@@ -55,6 +55,7 @@ token_t getToken(FILE* stream) {
         indentationStack.stack[0] = 0;
     }
     static unsigned toDedent = 0;
+    static bool toIndent = false;
     string_t string = {.capacity = (unsigned)STRING_STARTING_CAPACITY, .length = 0, .str = NULL};
     string.str = (char*)malloc(STRING_STARTING_CAPACITY * sizeof(*string.str));
     if (string.str == NULL)
@@ -68,6 +69,10 @@ token_t getToken(FILE* stream) {
             toDedent--;
             foundToken = true;
             break;
+        } else if (toIndent){
+            token.type = TKN_INDENTATION;
+            toIndent = false;
+            foundToken = true;
         }
         c = getc(stream);
 #ifdef DEBUG
@@ -117,38 +122,31 @@ token_t getToken(FILE* stream) {
                         token.type = TKN_AT_MAIN;
                         state = ST_START;
                         foundToken = true;
-                    } else {free(string.str); exit(1);} //LEX ERR 1 
-                } else if (c == 10) {
-                if(!depthInParentheses){
-                    token.type = TKN_NEWLINE;
-                    foundToken = true;
-                }
-                state = ST_INDENTATION;
-            } //ignoring the rest of ASCII symbols
+                    } else {free(string.str); exit(1); fprintf(stderr, "@ is expected only in string \"@main\"");} //LEX ERR 1 (OUT OF ASCII, EOF)
+            }
             break;
         case ST_INDENTATION:
+            INDENTATION_START:
+            bool tabPresent = false;
             unsigned spaces = 0;
-            if(c == 9) { //tabulátor na začátku neprázdného řádku je lexikální chyba 1
-                while ((0 <= (c = getc(stream)) && c <= 32) || c == 127) {;} // ignoring whitespaces
-                EOF_AND_OUT_OF_ASCII_CHECK
-                if (c != 10) {free(string.str); exit(1);} //LEX ERR 1
-                break;
+            toDedent = 0;
+            toIndent = false;
+            while ((0 <= (c = getc(stream)) && c <= 32) || c == 127){ //consuming whitespaces
+                if (c == ' ')
+                    spaces++;
+                else if (c = 10)
+                    goto INDENTATION_START;
+                else if (c = 9)
+                    tabPresent = true;
             }
-            while (c == ' '){
-                spaces++; 
-                c = getc(stream);
-            }
+            if(tabPresent)
+                exit(99);
             EOF_AND_OUT_OF_ASCII_CHECK
-            if (c == 10){
-                state = ST_INDENTATION;
-                break;
-            }
             ungetc(c, stream);
             if (spaces != indentationStack.stack[indentationStack.top]){
                 if (spaces > indentationStack.stack[indentationStack.top]){
                     push(&indentationStack, spaces);
-                    token.type = TKN_INDENTATION;
-                    foundToken = true;
+                    toIndent = true;
                 } else {
                     while (indentationStack.stack[indentationStack.top] > spaces){
                         indentationStack.top--;
@@ -158,6 +156,8 @@ token_t getToken(FILE* stream) {
                         exit(1);
                 }
             }
+            token.type = TKN_NEWLINE;
+            foundToken = true;
             state = ST_START;
             break;
         case ST_ZERO_BEGINNING:      
@@ -168,9 +168,9 @@ token_t getToken(FILE* stream) {
                 string.str[string.length++] = c;
                 string.str[string.length] = '\0';
             }
-            else if ('1' <= c && c <= '9') { //TODO podporovat tento scénář?
+            else if ('1' <= c && c <= '9') {
                 state = ST_INTEGER_PART;
-                string.str[0] = c;
+                string.str[0] = c; //00002 → 2
                 string.str[1] = '\0';
                 string.length = 1;
             }
@@ -183,7 +183,8 @@ token_t getToken(FILE* stream) {
             }
             break;
         case ST_ZB_UNDERSCORE:
-            if ('0' <= c && c <= '9') state = ST_ZERO_BEGINNING;
+            if (c == '0') state = ST_ZERO_BEGINNING;
+            else if ('1' <= c && c <= '9') state = ST_INTEGER_PART;
             else if (c == '_') break;
             else {free(string.str); exit(1);} //LEX ERR 1 
             break;
@@ -197,7 +198,11 @@ token_t getToken(FILE* stream) {
             else if (c == '.') {
                 state = ST_DOUBLE_DECIMAL_DOT;
                 stringAppend(&string, c);
-            }    
+            }   
+            else if (c == 'E' || c == 'e'){
+                state = ST_EXP_PREFIX;
+                stringAppend(&string, c);
+            } 
             else {
                 token.type = TKN_INT;
                 ungetc(c, stream);
@@ -224,7 +229,7 @@ token_t getToken(FILE* stream) {
             }
             else if (c == '_') state = ST_DP_UNDERSCORE;
             else if (c == 'e' || c == 'E') {
-                state = ST_EXPONENT;
+                state = ST_EXP_PREFIX;
                 stringAppend(&string, c);
             }
             else if (c == 'd' || c == 'D') {
@@ -317,14 +322,13 @@ token_t getToken(FILE* stream) {
         case ST_DIVISION_SLASH:
             if (c == '*') state = ST_OPENING_BLOCK_COMMENT; //TODO zváži jestli neapendovat jen věci, které mohou být string
             else if (c == '/') {
-                state = ST_INDENTATION;
+                DOUBLESLASHCOMMENT:
                 while ((c=getc(stream)) != 10 && c != EOF) {;}
-                foundToken = true;
                 if(c == 10){
-                    token.type = TKN_NEWLINE;
                     state = ST_INDENTATION;
                 } else if (c == EOF){
                     token.type = TKN_EOF;
+                    foundToken = true;
                     state = ST_START;
                 }
                 break;
@@ -377,25 +381,25 @@ token_t getToken(FILE* stream) {
                 if (c == EOF || c < 0 || 127 < c) {free(string.str); exit(1);}
                 else if (c == 10) asNewLine = true;
                 else if (c == '/') {
-                slash:
+                SLASH:
                     if ((c = getc(stream)) == '*')
                         depthCount++;
                     else if (c == 10) asNewLine = true; 
-                    else if (c == '/') goto slash;
+                    else if (c == '/') goto SLASH;
                     else if (c == EOF || c < 0 || 127 < c) {free(string.str); exit(1);}
                 }
                 else if (c == '*'){
-                asterisk:
+                ASTERISK:
                     if ((c = getc(stream)) == '/')
                         depthCount--;
                     else if (c == 10) asNewLine = true;
-                    else if (c == '*') goto asterisk;
+                    else if (c == '*') goto ASTERISK;
                     else if ((depthCount && c == EOF) || c < 0 || 127 < c) {free(string.str); exit(1);}
                 }
             }
             if (c == EOF) {foundToken = true; token.type = TKN_EOF; break;}
             if(asNewLine){
-                while (true){
+                while (true){ //Po newline blockovém komentáři nemůže být nic krom whitespaces a komentářů
                     c = getc(stream);
                     EOF_AND_OUT_OF_ASCII_CHECK
                     if (c == '/'){
@@ -404,19 +408,13 @@ token_t getToken(FILE* stream) {
                         if(c == '*'){ //another block comment
                             state = ST_OPENING_BLOCK_COMMENT;
                         } else if (c == '/'){ //double slash comment after a block comment
-                            while (c != 10)
-                            {
-                                c = getc(stream);
-                                EOF_AND_OUT_OF_ASCII_CHECK
-                            }                       
+                            goto DOUBLESLASHCOMMENT;                    
                         } else {free(string.str); exit(1);} //LEX ERR 1 
                         break;
                     } else if (c == 10) {
-                        token.type = TKN_NEWLINE;
-                        foundToken = true;
                         state = ST_INDENTATION;
                         break;
-                    } else if (32 < c && c < 127) {free(string.str); exit(1);} //LEX ERR 1 
+                    } else if (33 <= c && c <= 126) {free(string.str); exit(1);} //LEX ERR 1 
                 }
             } 
             break;        
