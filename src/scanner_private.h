@@ -27,16 +27,16 @@ typedef enum {
 }  EState;
 
 typedef struct {
-    unsigned capacity;
-    unsigned length; //bez NTC
+    size_t capacity;
+    size_t length; //bez NTC
     char* str;
 } string_t;
 
 void stringAppend(string_t* string, int c);
 
 typedef struct {
-    unsigned top;
-    unsigned capacity;
+    size_t top;
+    size_t capacity;
     unsigned* stack;
 } indentation_stack_t;
 

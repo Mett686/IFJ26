@@ -13,46 +13,52 @@
 #define COMPARE_WITH_KEYWORD(keyword, tkn) if(!strcmp(string.str, #keyword)) TOKEN_FOUND_RETURN_TO_START(tkn) 
 #define EOF_AND_OUT_OF_ASCII_CHECK if (c == EOF) {foundToken = true; token.type = TKN_EOF; break;}  else if (c < 0 || 127 < c) {free(string.str); exit(1);} //LEX ERR 1 //MIMO ASCII KROMĚ EOF
 
-void stringAppend(string_t* string, int c){
-    if(string->length == string->capacity + 1){
-        string->str = realloc(string->str, string->capacity*2);
-        if(string->str == NULL)
+void stringAppend(string_t* string, int c){ //https://share.gemini.google/VieLzVggsMza dynamic structures string and stack checked for errors
+    if (!string) {fprintf(stderr, "scanner: Tried to append to a NULL string.\n"); return;}
+    if(string->length + 1 >= string->capacity){
+        size_t new_capacity = (string->capacity == 0) ? STRING_STARTING_CAPACITY : string->capacity * 2;
+        char* tmp = realloc(string->str, new_capacity);
+        if(!tmp)
             exit(99);
-        string->capacity = string->capacity*2;
+        string->str = tmp;
+        string->capacity = new_capacity;
     }
     string->str[string->length++] = (char)c;
     string->str[string->length] = '\0';
 }
 
 indentation_stack_t* push(indentation_stack_t* stack, unsigned spaces){
-    if(stack->top + 1 == stack->capacity){
-        stack->stack = realloc(stack->stack, stack->capacity*2);
-        if(stack->stack == NULL)
+    if (!stack) {fprintf(stderr, "scanner: Tried to push to a NULL stack.\n"); return NULL;}
+    if(stack->top + 1 >= (int)stack->capacity){
+        size_t new_capacity = (stack->capacity == 0) ? STACK_STARTING_CAPACITY : stack->capacity * 2;
+        unsigned* tmp = realloc(stack->stack, new_capacity * sizeof(*stack->stack));
+        if(!tmp)
             exit(99);
-        stack->capacity *= 2;
+        stack->stack = tmp;
+        stack->capacity *= new_capacity;
     }
     stack->top++;
     stack->stack[stack->top] = spaces;
     return stack;
 }
 
-indentation_stack_t indentationStack = {.top = 0, .capacity = (unsigned)STACK_STARTING_CAPACITY, .stack = NULL};
+indentation_stack_t indentationStack = {.top = 0, .capacity = (size_t)STACK_STARTING_CAPACITY, .stack = NULL};
 
 token_t getToken(FILE* stream) {
     bool foundToken = false;
     static EState state = ST_START;
     token_t token = {.type = TKN_NONE};
     if(indentationStack.stack == NULL){
-        indentationStack.stack = (unsigned*)malloc(STACK_STARTING_CAPACITY);
+        indentationStack.stack = (unsigned*)malloc((size_t)STACK_STARTING_CAPACITY * sizeof(*indentationStack.stack));
         if(indentationStack.stack == NULL)
             exit(99);
         indentationStack.stack[0] = 0;
     }
     static unsigned toDedent = 0;
     string_t string = {.capacity = (unsigned)STRING_STARTING_CAPACITY, .length = 0, .str = NULL};
-    string.str = (char*)malloc(STRING_STARTING_CAPACITY);
+    string.str = (char*)malloc(STRING_STARTING_CAPACITY * sizeof(*string.str));
     if (string.str == NULL)
-        exit(99); //TODO vnitřní err
+        exit(99);
     unsigned depthInParentheses = 0; //NL v závorkách se chová jako obyčejný whitespace
     int c;
     while (!foundToken) 
