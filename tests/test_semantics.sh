@@ -1,25 +1,23 @@
 #!/bin/bash
 
-#https://share.gemini.google/nhvyD0ViyAyR
-
-# Exit immediately if a command exits with a non-zero status
 set -e
 
-# Configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 TEST_FILE="test_semantic.c"
-# Replace semantic.c with the actual file containing your analyzer code
-SEMANTIC_FILE="../src/abtDecoding.c" 
+SEMANTIC_FILE="../src/abtDecoding.c"
 HTAB_FILE="../src/htab.c"
 EXECUTABLE="test_runner"
 INCLUDES="-I../src"
 
-echo "Compiling tests..."
-gcc -Wall -g $INCLUDES -o $EXECUTABLE $TEST_FILE $SEMANTIC_FILE $HTAB_FILE
+cleanup() {
+    rm -f "$EXECUTABLE"
+}
+trap cleanup EXIT
 
-echo "Running tests..."
-./$EXECUTABLE
+echo "Compiling semantic tests..."
+gcc -Wall -Wextra -g $INCLUDES -o "$EXECUTABLE" "$TEST_FILE" "$SEMANTIC_FILE" "$HTAB_FILE"
 
-echo "Cleaning up..."
-rm -f $EXECUTABLE
-
-echo "Done."
+echo "Running semantic tests..."
+./"$EXECUTABLE"

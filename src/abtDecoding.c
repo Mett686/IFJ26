@@ -146,6 +146,9 @@ static AST_Node* wrapLastExprInReturn(AST_Node* body) {
     }
 
     if (body->next == NULL) {
+        if (body->node_type == NODE_RETURN) {
+            return body;
+        }
         return wrapWithNode(NODE_RETURN, body);
     }
 
@@ -385,8 +388,8 @@ static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTabl
             }
             if (currentReturnType == TYPE_UNIT) {
                 if (parent->left != NULL){
-                    fprintf(stderr, "semantická analýza: funkce @main nesmí mít parametry.\n");
-                    exit(5);
+                    fprintf(stderr, "semantická analýza: samostatný return je povolen jen ve funkci typu Unit.\n");
+                    exit(6);
                 }
                 break;
             }
