@@ -16,7 +16,7 @@ typedef enum{
 } Frame_t;
 
 /* Emits the IFJcode26 header and traverses the AST. */
-void codeGenerate(FILE *output, const AST_Node *root);
+bool codeGenerate(FILE *output, const AST_Node *root);
 
 // Pregenerates while loop variables 
 void defvarPregen(AST_Node* node, unsigned scopecnt);
