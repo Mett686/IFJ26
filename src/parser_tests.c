@@ -1,0 +1,807 @@
+/*
+ * parser_tests.c -- jednotkove testy syntakticke analyzy (parser.c) BEZ scanneru
+ *
+ * Preklad a spusteni (bez scanner.c a bez main.c):
+ *   gcc -std=c11 -Wall -Wextra -g -I. -o test_parser parser_tests.c parser.c stack.c htab.c abtDecoding.c codegen.c
+ *   ./test_parser            # vsechny testy
+ *   ./test_parser err_if     # jen testy, jejichz nazev obsahuje "err_if"
+ *   ./test_parser -v         # nepotlaci stderr parseru (chybove hlasky)
+ */
+
+#define _POSIX_C_SOURCE 200809L
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+#include "htab.h"
+#include "parser.h"
+#include "scanner.h"
+
+/* ------------------------------------------------------------------ */
+/* Atrapa scanneru                                                     */
+/* ------------------------------------------------------------------ */
+
+static const int *g_toks;
+static size_t g_n, g_pos, g_over;
+
+token_t getToken(FILE *stream)
+{
+    (void)stream;
+    token_t t;
+    memset(&t, 0, sizeof t);
+
+    if (g_pos < g_n) {
+        t.type = g_toks[g_pos++];
+    } else {
+        t.type = TKN_EOF;
+        g_over++;
+    }
+
+    if (t.type == TKN_ID) {
+        char *buf = malloc(32);
+        if (buf) {
+            snprintf(buf, 32, "id_%zu", g_pos);
+            t.string = buf;
+        }
+    } else if (t.type == TKN_STRING || t.type == TKN_MULTILINE_STRING) {
+        char *buf = malloc(8);
+        if (buf) {
+            strcpy(buf, "str");
+            t.string = buf;
+        }
+    }
+
+    return t;
+}
+
+/* ------------------------------------------------------------------ */
+/* Zastupna funkce za precedencni analyzu                              */
+/* ------------------------------------------------------------------ */
+
+static int is_operand(int t)
+{
+    return t == TKN_ID ||
+           t == TKN_INT ||
+           t == TKN_DOUBLE ||
+           t == TKN_STRING ||
+           t == TKN_MULTILINE_STRING ||
+           t == TKN_UNIT;
+}
+
+static int is_binop(int t)
+{
+    switch (t) {
+        case TKN_PLUS:
+        case TKN_MINUS:
+        case TKN_TIMES:
+        case TKN_DIVISION_SLASH:
+        case TKN_EQUAL:
+        case TKN_NOT_EQUAL:
+        case TKN_LESS:
+        case TKN_LESS_EQUAL:
+        case TKN_GREATER:
+        case TKN_GREATER_EQUAL:
+            return 1;
+        default:
+            return 0;
+    }
+}
+
+void parser_expretion(FILE *stream, token_t *token)
+{
+    int expect_operand = 1, depth = 0, prev_id = 0, just_opened = 0;
+    int is_call[64];
+
+    for (;;) {
+        int t = token->type;
+        if (is_operand(t)) {
+            if (!expect_operand) exit(2);
+            expect_operand = 0;
+            prev_id = (t == TKN_ID);
+            just_opened = 0;
+        } else if (t == TKN_OPENING_PARENTHESES) {
+            if (depth >= 63) exit(2);
+            if (expect_operand) {
+                is_call[depth++] = 0;
+            } else if (prev_id) {
+                is_call[depth++] = 1;
+                expect_operand = 1;
+            } else {
+                exit(2);
+            }
+            just_opened = 1;
+            prev_id = 0;
+        } else if (t == TKN_CLOSING_PARENTHESES) {
+            if (depth == 0) break;
+            if (expect_operand && !(is_call[depth - 1] && just_opened)) exit(2);
+            depth--;
+            expect_operand = 0;
+            prev_id = 0;
+            just_opened = 0;
+        } else if (t == TKN_COMMA && depth > 0 && is_call[depth - 1]) {
+            if (expect_operand) exit(2);
+            expect_operand = 1;
+            prev_id = 0;
+            just_opened = 0;
+        } else if (is_binop(t)) {
+            if (expect_operand) {
+                if (t != TKN_MINUS && t != TKN_PLUS) exit(2);
+            } else {
+                expect_operand = 1;
+            }
+            prev_id = 0;
+            just_opened = 0;
+        } else {
+            break;
+        }
+        *token = getToken(stream);
+    }
+    if (expect_operand) exit(2);
+    if (depth != 0) exit(2);
+}
+
+typedef struct {
+    const char *name;
+    int expect_ok;       /* 1 = parser ma vstup prijmout, 0 = skoncit exit(2) */
+    const int *toks;
+    size_t n;
+} test_t;
+
+#define CASE(nm, ok, ...) \
+    { nm, ok, (const int[]){__VA_ARGS__}, sizeof((const int[]){__VA_ARGS__}) / sizeof(int) }
+
+/* ------------------------------------------------------------------ */
+/* Testy (kazdy token uvedeny priamo)                                 */
+/* ------------------------------------------------------------------ */
+
+static const test_t tests[] = {
+    /* ===================== SPRAVNE VSTUPY ===================== */
+    CASE("ok_minimal", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_only_prolog", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE, TKN_EOF),
+
+    CASE("ok_main_annotation_own_line", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_NEWLINE,
+         TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_two_functions_main_last", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_two_functions_main_first", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_one_line_body_with_params", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES,
+         TKN_ID, TKN_COLON, TKN_INT_KEYWORD, TKN_COMMA,
+         TKN_ID, TKN_COLON, TKN_DOUBLE_KEYWORD, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_INT_KEYWORD, TKN_ASSING, TKN_ID, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_one_line_body_no_return_type", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_ID, TKN_COLON, TKN_INT_KEYWORD,
+         TKN_CLOSING_PARENTHESES, TKN_ASSING, TKN_ID, TKN_PLUS, TKN_INT, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_block_body_with_param", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_ID, TKN_COLON, TKN_STRING_KEYWORD,
+         TKN_CLOSING_PARENTHESES, TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_ID, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_val_var_forms", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_VAL, TKN_ID, TKN_ASSING, TKN_INT, TKN_NEWLINE,
+         TKN_VAL, TKN_ID, TKN_COLON, TKN_INT_KEYWORD, TKN_ASSING, TKN_INT, TKN_NEWLINE,
+         TKN_VAR, TKN_ID, TKN_COLON, TKN_STRING_KEYWORD, TKN_ASSING, TKN_STRING, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_unit_literal_statement", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_UNIT, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_initializer_expression", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_VAL, TKN_ID, TKN_ASSING, TKN_OPENING_PARENTHESES, TKN_ID, TKN_PLUS, TKN_INT,
+         TKN_CLOSING_PARENTHESES, TKN_TIMES, TKN_ID, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_initializer_unary_minus", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_VAL, TKN_ID, TKN_ASSING, TKN_MINUS, TKN_ID, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_initializer_call", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_VAL, TKN_ID, TKN_ASSING, TKN_ID, TKN_OPENING_PARENTHESES, TKN_ID,
+         TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_assignment", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_VAR, TKN_ID, TKN_ASSING, TKN_INT, TKN_NEWLINE,
+         TKN_ID, TKN_ASSING, TKN_ID, TKN_PLUS, TKN_INT, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_call_no_args", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_call_with_args", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_ID, TKN_COMMA, TKN_INT, TKN_COMMA, TKN_STRING,
+         TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_standalone_id_last", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_paren_expression_statement", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_OPENING_PARENTHESES, TKN_ID, TKN_PLUS, TKN_INT, TKN_CLOSING_PARENTHESES,
+         TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_return_value", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_RETURN, TKN_ID, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_return_call", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_RETURN, TKN_ID, TKN_OPENING_PARENTHESES, TKN_ID, TKN_CLOSING_PARENTHESES,
+         TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_return_bare", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_RETURN, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_semicolon_separator", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_VAL, TKN_ID, TKN_ASSING, TKN_INT, TKN_SEMICOLON,
+         TKN_VAL, TKN_ID, TKN_ASSING, TKN_INT, TKN_SEMICOLON,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_if_else_blocks", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_IF, TKN_ID, TKN_LESS, TKN_INT, TKN_THEN, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_ELSE, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_statement_after_if_block", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_IF, TKN_ID, TKN_LESS, TKN_INT, TKN_THEN, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_ELSE, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_nested_if", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_IF, TKN_ID, TKN_LESS, TKN_INT, TKN_THEN, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_IF, TKN_ID, TKN_LESS, TKN_INT, TKN_THEN, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_ELSE, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_DEDENTATION,
+         TKN_ELSE, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_while_block", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_WHILE, TKN_ID, TKN_GREATER, TKN_INT, TKN_DO, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_ASSING, TKN_ID, TKN_MINUS, TKN_INT, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_double_dedent", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_WHILE, TKN_ID, TKN_GREATER, TKN_INT, TKN_DO, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_ASSING, TKN_ID, TKN_PLUS, TKN_INT, TKN_NEWLINE,
+         TKN_IF, TKN_ID, TKN_LESS, TKN_INT, TKN_THEN, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_ELSE, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_DEDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_return_in_branches", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_IF, TKN_ID, TKN_LESS, TKN_INT, TKN_THEN, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_RETURN, TKN_INT, TKN_NEWLINE, TKN_DEDENTATION,
+         TKN_ELSE, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_RETURN, TKN_INT, TKN_NEWLINE, TKN_DEDENTATION,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("ok_if_last_then_next_function", 1,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_IF, TKN_ID, TKN_LESS, TKN_INT, TKN_THEN, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_ELSE, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_DEDENTATION,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    /* ===================== SYNTAKTICKE CHYBY (exit 2) ===================== */
+    CASE("err_no_prolog", 0,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_prolog_incomplete", 0,
+         TKN_IMPORT, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_prolog_twice", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_statement_after_prolog", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_EOF),
+
+    CASE("err_garbage_after_function", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_THEN, TKN_EOF),
+
+    CASE("err_def_missing_name", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_DEF, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES, TKN_COLON, TKN_UNIT_KEYWORD,
+         TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_def_missing_close_paren", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_ASSING, TKN_INT, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_def_missing_assign", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES, TKN_COLON,
+         TKN_INT_KEYWORD, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_param_no_type", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_ID, TKN_CLOSING_PARENTHESES,
+         TKN_ASSING, TKN_ID, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_param_no_comma", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES,
+         TKN_ID, TKN_COLON, TKN_INT_KEYWORD, TKN_ID, TKN_COLON, TKN_INT_KEYWORD,
+         TKN_CLOSING_PARENTHESES, TKN_ASSING, TKN_ID, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_param_leading_comma", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_COMMA,
+         TKN_ID, TKN_COLON, TKN_INT_KEYWORD, TKN_CLOSING_PARENTHESES,
+         TKN_ASSING, TKN_ID, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_param_bad_type", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_ID, TKN_COLON, TKN_ID,
+         TKN_CLOSING_PARENTHESES, TKN_ASSING, TKN_ID, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_body_missing", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES, TKN_COLON,
+         TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_EOF),
+
+    CASE("err_missing_indent", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES, TKN_COLON,
+         TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_EOF),
+
+    CASE("err_missing_dedent_at_eof", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_EOF),
+
+    CASE("err_unexpected_indent", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_if_missing_then", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_IF, TKN_ID, TKN_LESS, TKN_INT, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_ELSE, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_if_missing_condition", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_IF, TKN_THEN, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_ELSE, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_if_missing_else_base", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_IF, TKN_ID, TKN_LESS, TKN_INT, TKN_THEN, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_else_alone", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ELSE, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_while_missing_do", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_WHILE, TKN_ID, TKN_LESS, TKN_INT, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_while_missing_condition", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_WHILE, TKN_DO, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_STRING, TKN_CLOSING_PARENTHESES, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_val_missing_initializer", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_VAL, TKN_ID, TKN_NEWLINE, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_val_missing_name", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_VAL, TKN_ASSING, TKN_INT, TKN_NEWLINE, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_val_typed_missing_initializer", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_VAL, TKN_ID, TKN_COLON, TKN_INT_KEYWORD, TKN_NEWLINE, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_val_bad_type", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_VAL, TKN_ID, TKN_COLON, TKN_INT, TKN_ASSING, TKN_INT, TKN_NEWLINE,
+         TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_val_missing_assign", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_VAL, TKN_ID, TKN_INT, TKN_NEWLINE, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_assignment_missing_rhs", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_VAR, TKN_ID, TKN_ASSING, TKN_INT, TKN_NEWLINE,
+         TKN_ID, TKN_ASSING, TKN_NEWLINE, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_dangling_operator", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_VAL, TKN_ID, TKN_ASSING, TKN_INT, TKN_PLUS, TKN_NEWLINE, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_unclosed_paren_in_expr", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_VAL, TKN_ID, TKN_ASSING, TKN_OPENING_PARENTHESES, TKN_ID, TKN_PLUS, TKN_INT,
+         TKN_NEWLINE, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_empty_parens_in_expr", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_VAL, TKN_ID, TKN_ASSING, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_NEWLINE, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_return_two_operands", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_RETURN, TKN_ID, TKN_ID, TKN_NEWLINE, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_two_statements_no_separator", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_VAL, TKN_ID, TKN_ASSING, TKN_INT, TKN_VAL, TKN_ID, TKN_ASSING, TKN_INT,
+         TKN_NEWLINE, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_statement_starts_with_operator", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_TIMES, TKN_INT, TKN_NEWLINE, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_call_missing_close_paren", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_ID, TKN_NEWLINE, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_call_missing_comma", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_ID, TKN_ID, TKN_CLOSING_PARENTHESES,
+         TKN_NEWLINE, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_call_leading_comma", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_COMMA, TKN_ID, TKN_CLOSING_PARENTHESES,
+         TKN_NEWLINE, TKN_DEDENTATION, TKN_EOF),
+
+    CASE("err_call_trailing_comma_same_line", 0,
+         TKN_IMPORT, TKN_IFJ26dot_asterisk, TKN_NEWLINE,
+         TKN_AT_MAIN, TKN_DEF, TKN_ID, TKN_OPENING_PARENTHESES, TKN_CLOSING_PARENTHESES,
+         TKN_COLON, TKN_UNIT_KEYWORD, TKN_ASSING, TKN_NEWLINE, TKN_INDENTATION,
+         TKN_ID, TKN_OPENING_PARENTHESES, TKN_ID, TKN_COMMA, TKN_CLOSING_PARENTHESES,
+         TKN_NEWLINE, TKN_DEDENTATION, TKN_EOF),
+};
+
+/* ------------------------------------------------------------------ */
+/* Spousteni                                                           */
+/* ------------------------------------------------------------------ */
+
+static int run_child(const test_t *t)
+{
+    g_toks = t->toks;
+    g_n = t->n;
+    g_pos = 0;
+    g_over = 0;
+    alarm(2);
+
+    htab_t *table = htabCreate(16);
+    AST_Node *ast = parser(NULL, table);
+    (void)ast;
+
+    if (g_pos < g_n) return 70;
+    if (g_over > 0) return 71;
+    return 0;
+}
+
+static const char *judge(int expect_ok, int status, char *buf, size_t buflen)
+{
+    if (WIFSIGNALED(status)) {
+        int sig = WTERMSIG(status);
+        if (sig == SIGALRM) return "zacykleni (timeout 2 s)";
+        snprintf(buf, buflen, "pad, signal %d", sig);
+        return buf;
+    }
+    int code = WEXITSTATUS(status);
+    if (expect_ok) {
+        if (code == 0) return NULL;
+        if (code == 2) return "platny vstup byl odmitnut (exit 2)";
+        if (code == 70) return "parser se vratil driv, nez precetl vsechny tokeny";
+        if (code == 71) return "parser cetl za konec vstupu";
+        snprintf(buf, buflen, "neocekavany exit kod %d", code);
+        return buf;
+    }
+    if (code == 2) return NULL;
+    if (code == 0 || code == 70 || code == 71) return "neplatny vstup byl prijat (parser se vratil normalne)";
+    snprintf(buf, buflen, "ocekavan exit 2, vracen %d", code);
+    return buf;
+}
+
+int main(int argc, char **argv)
+{
+    const char *filter = NULL;
+    int verbose = 0, pass = 0, fail = 0;
+    size_t count = sizeof tests / sizeof tests[0];
+
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-v") == 0) verbose = 1;
+        else filter = argv[i];
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        const test_t *t = &tests[i];
+        if (filter && !strstr(t->name, filter)) continue;
+
+        fflush(stdout);
+        pid_t pid = fork();
+        if (pid < 0) {
+            perror("fork");
+            return 99;
+        }
+        if (pid == 0) {
+            if (!verbose) freopen("/dev/null", "w", stderr);
+            _exit(run_child(t));
+        }
+        int status = 0;
+        waitpid(pid, &status, 0);
+
+        char buf[64];
+        const char *why = judge(t->expect_ok, status, buf, sizeof buf);
+        if (why == NULL) {
+            pass++;
+            printf("PASS  %s\n", t->name);
+        } else {
+            fail++;
+            printf("FAIL  %-40s %s\n", t->name, why);
+        }
+    }
+
+    printf("\nVysledek: %d proslo, %d selhalo\n", pass, fail);
+    return fail ? 1 : 0;
+}

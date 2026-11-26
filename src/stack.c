@@ -23,44 +23,85 @@ Stack * stack_initialize(){
         return new_stack;
     }else{
         exit(99);
-        return NULL;
+        
     }
 }
 
 void stack_push_precedence(Stack **stack,Precedence precedence){
     Stack *new_stack = calloc(1,sizeof(Stack));
     if(new_stack==NULL){
+        //ERROR
         exit(99);
-        return;
+        
     }else{
-        new_stack->next = *stack;
-        new_stack->precedence = precedence;
-        stack = &new_stack;
-        return;
+
+        if(stack->category == STACK_TERM){
+            new_stack->next = stack;
+            new_stack->precedence=precedence;
+            new_stack->category = STACK_PRECEDENCE;
+            return new_stack;
+        }else{
+
+            Stack*tmp = stack;
+            Stack* before;
+            while(tmp->category !=STACK_TERM ){
+                before = stack;
+                tmp = stack->next;
+            }
+            before->next = new_stack;
+            new_stack->next = tmp;
+            new_stack->precedence = precedence;
+            new_stack->category = STACK_PRECEDENCE;
+            return stack;
+        }
+        
     }
 }
 
 
 
-void stack_push(Stack **stack,Symbol_Category category,Precedence_Symbol symbol, token_t *token){
-    Stack *new_stack = malloc(sizeof(Stack));
+Stack* stack_push(Stack *stack,Symbol_Category category,Precedence_Symbol symbol, token_t token){
+    Stack *new_stack = calloc(1,sizeof(Stack));
     if(new_stack==NULL){
         exit(99);
-        return;
+        
     }else{
         new_stack->next = *stack;
         new_stack->category=category;
         new_stack->symbol=symbol;
-        new_stack->token = *token;
-        stack = &new_stack;
-        return;
+        new_stack->token = token;
+        return new_stack;
     }
 }
+
+Stack* stack_push_AST_node(Stack *stack,AST_Node *tree){
+    Stack *new_stack = calloc(1,sizeof(Stack));
+    if(new_stack==NULL){
+        exit(99);
+        
+    }else{
+        new_stack->next = stack;
+        new_stack->category=STACK_NONTERM;
+        new_stack->symbol=PS_EXP;
+        new_stack->tree = tree;
+        return new_stack;
+    }
+}
+
+
 
 Stack* stack_pop(Stack **stack){
     Stack *tmp= (*stack)->next;
     free(stack);
     
     return tmp;
+}
+
+Precedence_Symbol stack_top_precedence_symbol(Stack *stack){
+    Stack *tmp = stack;
+    while(tmp->category != STACK_TERM){
+        tmp = stack->next;
+    }
+    return tmp->symbol;
 }
 
