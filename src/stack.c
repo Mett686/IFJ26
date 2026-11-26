@@ -46,6 +46,7 @@ Stack* stack_push_precedence(Stack *stack,Precedence precedence){
     while(current->category != STACK_TERM){
         previous = current;
         current = current->next;
+
     }
     previous->next = new_stack;
     new_stack->next = current;
@@ -60,11 +61,13 @@ Stack* stack_push(Stack *stack,Symbol_Category category,Precedence_Symbol symbol
         exit(99);
         
     }else{
+
         new_stack->next = stack;
         new_stack->category=category;
         new_stack->symbol=symbol;
         new_stack->token = token;
         return new_stack;
+    
     }
 }
 
@@ -90,6 +93,7 @@ Stack* stack_pop(Stack *stack){
     
     return tmp;
 }
+
 
 Precedence_Symbol stack_top_precedence_symbol(Stack *stack){
     Stack *tmp = stack;
