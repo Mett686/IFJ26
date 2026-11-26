@@ -66,7 +66,8 @@ OT_GREATER_EQUAL,
 OT_TIMES,
 OT_AND,
 OT_OR,
-OT_CONCAT
+OT_CONCAT,
+OT_PUSH
 }Operator_type;
 
 typedef enum{

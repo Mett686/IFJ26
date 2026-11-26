@@ -202,7 +202,7 @@ unsigned defvarPregen(AST_Node* node, unsigned scopecnt) {
 }
 
 void expGenerate(AST_Node* node) {
-  switch (node->operator_type) { // TODO pretypovani, nacteni promene na stack
+  switch (node->operator_type) { // TODO pretypovani
     case OT_UNARY_MINUS:
       fprintf(file, "SUBS\n");
     case OT_PLUS:
@@ -244,6 +244,28 @@ void expGenerate(AST_Node* node) {
       fprintf(file, "CONCAT GF@CONCAT$$$0 GF@CONCAT$$$0 GF@CONCAT$$$1\n");
       fprintf(file, "PUSHS GF@CONCAT$$$0\n");
       break;
+    case OT_PUSH:
+      if(node->name) {
+        fprintf(file, "PUSHS LF@%s$%d\n", node->name, node->symbol->parent->tableId);
+      } else {
+        switch (node->data_type) {
+          case TYPE_INT:
+            fprintf(file, "PUSHS int@%d\n", node->int_value);
+            break;
+          case TYPE_DOUBLE:
+            fprintf(file, "PUSHS float@%a\n", node->double_value);
+            break;
+          case TYPE_STRING:
+            fprintf(file, "PUSHS string@%s\n", node->string_value);
+            break;
+          case TYPE_BOOL:
+            fprintf(file, "PUSHS bool@%s\n", (node->bool_value ? "true" : "false"));
+            break;
+          default:
+            break;
+        }
+      }
+    
     // Boolthen TODO
     case OT_AND:
     case OT_OR:
