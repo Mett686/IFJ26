@@ -6,8 +6,10 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "codegen.h"
 #include "stdFunc.h"
+#include "ast.h"
 
 #define FRAME_S(frame) \
   (frame == GF ? "GF" : (frame == TF ? "TF" : "LF"))
@@ -164,7 +166,7 @@ static void generate_node(const AST_Node* node)
       break;
     case NODE_EXP:
       // synove val var exp
-      if(node->node_type == OT_UNARY_MINUS) fprintf(file, "PUSHS %s@0\n", TYPE_S(node->node_type));
+      if(node->operator_type == OT_UNARY_MINUS) fprintf(file, "PUSHS %s@0\n", TYPE_S(node->node_type));
       generate_node(node->left);
       generate_node(node->right);
       expGenerate(node);
@@ -201,10 +203,14 @@ unsigned defvarPregen(AST_Node* node, unsigned scopecnt) {
   return scopecnt;
 }
 
-void expGenerate(AST_Node* node) {
-  switch (node->operator_type) { // TODO pretypovani
+void expGenerate(const AST_Node* node) {
+  switch (node->operator_type) {
+    case OT_UNARY_PLUS:
+      exit(99);
+      break;
     case OT_UNARY_MINUS:
       fprintf(file, "SUBS\n");
+      break;
     case OT_PLUS:
       fprintf(file, "ADDS\n");
       break;
@@ -244,13 +250,16 @@ void expGenerate(AST_Node* node) {
       fprintf(file, "CONCAT GF@CONCAT$$$0 GF@CONCAT$$$0 GF@CONCAT$$$1\n");
       fprintf(file, "PUSHS GF@CONCAT$$$0\n");
       break;
+    case OT_CONV:
+      fprintf(file, "INT2FLOATS\n");
+      break;
     case OT_PUSH:
       if(node->name) {
         fprintf(file, "PUSHS LF@%s$%d\n", node->name, node->symbol->parent->tableId);
       } else {
         switch (node->data_type) {
           case TYPE_INT:
-            fprintf(file, "PUSHS int@%d\n", node->int_value);
+            fprintf(file, "PUSHS int@%lld\n", node->int_value);
             break;
           case TYPE_DOUBLE:
             fprintf(file, "PUSHS float@%a\n", node->double_value);
