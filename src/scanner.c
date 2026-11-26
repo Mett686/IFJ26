@@ -150,6 +150,15 @@ token_t getToken(FILE* stream) {
                 else if (c == 9)
                     tabPresent = true;
             }
+            if(c == '/'){
+                c = getc(stream);
+                if(c == '/' || c == '*'){
+                    ungetc(c, stream);
+                    ungetc('/', stream);
+                    state = ST_START;
+                    goto START_GETTOKEN; 
+                }
+            }
             if(tabPresent)
                 exit(99);
             EOF_AND_OUT_OF_ASCII_CHECK
@@ -597,12 +606,12 @@ token_t getToken(FILE* stream) {
         }
     }
     if(token.type == TKN_EOF && !EOFreached){ //EOF reached for the first time, dedent everything
-        toDedent = (unsigned)(indentationStack.top+1);
+        toDedent = (unsigned)indentationStack.top+1;
         indentationStack.top = 0;
         EOFreached = true;
         goto START_GETTOKEN;
     }
-    
+
     if(token.type == TKN_NEWLINE) {
         if (lastTknWasIndent){
             goto START_GETTOKEN;
