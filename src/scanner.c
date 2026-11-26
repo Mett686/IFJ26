@@ -74,11 +74,10 @@ token_t getToken(FILE* stream) {
             toIndent = false;
             foundToken = true;
         }
-        c = getc(stream);
-#ifdef DEBUG
-        fprintf(stderr, "char: '%c',\t state: %d,\t %s\n", c, state, string.str);
-#endif
-        EOF_AND_OUT_OF_ASCII_CHECK
+        if (state != ST_INDENTATION) {
+            c = getc(stream);
+            EOF_AND_OUT_OF_ASCII_CHECK
+        }
         switch (state) //https://share.gemini.google/zIizBiReNRVX
         {
         case ST_START: 
