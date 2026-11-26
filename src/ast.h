@@ -67,6 +67,7 @@ OT_TIMES,
 OT_AND,
 OT_OR,
 OT_CONCAT,
+OT_CONV
 }Operator_type;
 
 typedef enum{

@@ -22,6 +22,7 @@ static htabItem_t* blockCheck(const char* name, htab_t* hashTable, htab_t* local
         }
         scope = scope->parent;
     }
+
     return htabGet(hashTable, (char*)name);
 }
 
@@ -115,6 +116,7 @@ static void registerUserFunctions(AST_Node* ptr, htab_t* hashTable, int* mainFun
             funcData->paramCount = count;
             funcData->paramTypes = typesArray;
             funcData->returnType = def->data_type;
+            def->symbol = funcData;
         }
         curr = curr->right;
     }
@@ -132,7 +134,12 @@ static AST_Node* wrapWithNode(Node_type ntype, AST_Node* child) {
     }
 
     conv->node_type = ntype;
-    conv->data_type = child->data_type;
+    if (ntype == NODE_EXP) {
+        conv->operator_type = OT_CONV;
+        conv->data_type = TYPE_DOUBLE;
+    } else {
+        conv->data_type = child->data_type;
+    }
     conv->left = child;
     conv->right = NULL;
     conv->next = NULL;
@@ -172,6 +179,7 @@ static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTabl
             if (parent->left == NULL && parent->right == NULL) {
                 if (parent->name != NULL) {
                     htabItem_t* var = blockCheck(parent->name, hashTable, localHashTable);
+                    parent->symbol = var;
                     if (var == NULL || var->isFunction) {
                         fprintf(stderr, "semantická analýza: použití nedefinované proměnné '%s'.\n", parent->name);
                         exit(3);
@@ -262,6 +270,7 @@ static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTabl
                 }
                 case OT_CONCAT:
                 case OT_IDIVIDE:
+                case OT_CONV:
                     break;
             }
             
@@ -270,6 +279,7 @@ static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTabl
         case NODE_FUNC_CALL: {
             char* funcName = parent->name;
             htabItem_t* funcDef = htabGet(hashTable, funcName);
+            parent->symbol = funcDef;
             if (funcDef == NULL || !funcDef->isFunction) {
                 fprintf(stderr, "semantická analýza: volání nedefinované funkce '%s'.\n", funcName);
                 exit(3);
@@ -342,6 +352,7 @@ static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTabl
             varData->paramCount = 0;
             varData->paramTypes = NULL;
             varData->returnType = parent->data_type;
+            parent->symbol = varData;
             break;
         }
 
@@ -350,6 +361,7 @@ static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTabl
             int exprType = leftType;
 
             htabItem_t* target = blockCheck(varName, hashTable, localHashTable);
+            parent->symbol = target;
             if (target == NULL || target->isFunction) {
                 fprintf(stderr, "semantická analýza: přiřazení do nedefinované proměnné '%s'.\n", varName);
                 exit(3);
@@ -430,6 +442,7 @@ static void recursiveSemanticCheck(AST_Node* ptr, htab_t* hashTable, htab_t* loc
                     exit(4);
                 }
                 htabItem_t* pItem = htabWriteNew(funcScope, param->name);
+                param->symbol = pItem;
                 if (pItem == NULL) exit(99);
                 pItem->isFunction = false;
                 pItem->isMutable = false;
