@@ -9,15 +9,20 @@
 #include <stdint.h>
 
 typedef struct htabItem {
+  // Vlastnosti htab
   char* key;
   uint32_t hash;
+
   int nested;
-  char *string;
   bool isMutable;
   bool isFunction;
   int paramCount;
   int *paramTypes;
   int returnType;
+
+  char *string; // hodnota literalu
+
+  unsigned scopecnt; // scopecnt pro codegen
 } htabItem_t;
 
 typedef struct htab {
