@@ -22,6 +22,6 @@ bool codeGenerate(FILE *output, const AST_Node *root);
 unsigned defvarPregen(AST_Node* node, unsigned scopecnt);
 
 // Generates expressions
-void expGenerate(AST_Node* node);
+void expGenerate(const AST_Node* node);
 
 #endif
