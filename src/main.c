@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
         return 99;
     }
 
-    ast = parser(input);
+    ast = parser(input,htab);
     if (ast == NULL) {
         fprintf(stderr, "main: parser failed to create the syntax tree\n");
         htabDestroy(htab);

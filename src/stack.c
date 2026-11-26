@@ -5,7 +5,7 @@
 #include "scanner.h"
 #include "parser.h"
 
-static void stack_exit(int code, const char *file, int line)
+_Noreturn static void stack_exit(int code, const char *file, int line)
 {
     fprintf(stderr, "stack: allocation fatal error %d at %s:%d\n", code, file, line);
     exit(code);
@@ -27,35 +27,29 @@ Stack * stack_initialize(){
     }
 }
 
-void stack_push_precedence(Stack **stack,Precedence precedence){
+Stack* stack_push_precedence(Stack *stack,Precedence precedence){
     Stack *new_stack = calloc(1,sizeof(Stack));
     if(new_stack==NULL){
-        //ERROR
         exit(99);
-        
-    }else{
-
-        if(stack->category == STACK_TERM){
-            new_stack->next = stack;
-            new_stack->precedence=precedence;
-            new_stack->category = STACK_PRECEDENCE;
-            return new_stack;
-        }else{
-
-            Stack*tmp = stack;
-            Stack* before;
-            while(tmp->category !=STACK_TERM ){
-                before = stack;
-                tmp = stack->next;
-            }
-            before->next = new_stack;
-            new_stack->next = tmp;
-            new_stack->precedence = precedence;
-            new_stack->category = STACK_PRECEDENCE;
-            return stack;
-        }
-        
     }
+
+    new_stack->precedence = precedence;
+    new_stack->category = STACK_PRECEDENCE;
+
+    if(stack->category == STACK_TERM){
+        new_stack->next = stack;
+        return new_stack;
+    }
+
+    Stack *previous = stack;
+    Stack *current = stack->next;
+    while(current->category != STACK_TERM){
+        previous = current;
+        current = current->next;
+    }
+    previous->next = new_stack;
+    new_stack->next = current;
+    return stack;
 }
 
 
@@ -66,7 +60,7 @@ Stack* stack_push(Stack *stack,Symbol_Category category,Precedence_Symbol symbol
         exit(99);
         
     }else{
-        new_stack->next = *stack;
+        new_stack->next = stack;
         new_stack->category=category;
         new_stack->symbol=symbol;
         new_stack->token = token;
@@ -90,8 +84,8 @@ Stack* stack_push_AST_node(Stack *stack,AST_Node *tree){
 
 
 
-Stack* stack_pop(Stack **stack){
-    Stack *tmp= (*stack)->next;
+Stack* stack_pop(Stack *stack){
+    Stack *tmp= stack->next;
     free(stack);
     
     return tmp;
@@ -100,7 +94,7 @@ Stack* stack_pop(Stack **stack){
 Precedence_Symbol stack_top_precedence_symbol(Stack *stack){
     Stack *tmp = stack;
     while(tmp->category != STACK_TERM){
-        tmp = stack->next;
+        tmp = tmp->next;
     }
     return tmp->symbol;
 }
