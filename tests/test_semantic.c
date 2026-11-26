@@ -1163,7 +1163,7 @@ int main(void) {
     test_45_return_outside_func_exit_10();
     test_46_return_inferred_null_exit_6();
     test_47_return_unit_bare_ok();
-    test_48_return_unit_with_val_exit_5();
+    test_48_return_unit_with_val_exit_6();
     test_49_return_int_in_double_ok();
     test_50_return_mismatch_exit_6();
 
