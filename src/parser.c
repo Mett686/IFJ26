@@ -994,7 +994,6 @@ Precedence parser_get_precedence(Precedence_Symbol stack_symbol,Precedence_Symbo
             return P_EQUAL;
             
         default:
-        fprintf(stderr, "[1040] cat=%d sym=%d\n",coming_symbol, stack_symbol);
             exit(2);
             //ERROR
             break;
@@ -1053,7 +1052,6 @@ void parser_expression(FILE*stream,token_t *token,AST_Node *node,Stack *stack){
                      *token = getToken(stream);
                 }
                 else{
-                    fprintf(stderr, "[DEBUG exp] token.type=%d stack_sym=%d coming_sym=%d prec=%d\n",token->type, stack_symbol, coming_symbol, precedence);
                     exit(2);
                 }
             }
@@ -1318,16 +1316,6 @@ Precedence_Symbol parser_TKN_to_PS(token_t token,Stack*stack){
             
         default:
         //ERROR
-        fprintf(stderr, "[DEBUG 1024] tokentype=%d top_sym=%d top_prec=%d has_tree=%d\n",
-        token.type,
-        stack ? stack->symbol : -1,
-        stack ? stack->precedence : -1,
-        (stack && stack->tree) ? 1 : 0);
-
         exit(2);
     }
 }
-
-//TODO FILL HTAB
-//TODO ERRORfprintf
-//TODO /n 
