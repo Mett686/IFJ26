@@ -37,8 +37,9 @@ static void generate_node(const AST_Node* node)
     case NODE_PROGRAM:
       // koren definuje zabudovane funkce, ".IFJcode26" vypisuje codeGenerate
       // jinak se chova jako def list
-      fprintf(file, STD_FUNC_STR); // tisk standartnich funkci
-
+      fprintf(file, STD_FUNC_STR0); // tisk standartnich funkci
+      fprintf(file, STD_FUNC_STR1); // tisk standartnich funkci
+      
     case NODE_DEF_LIST:
       // levy je nejaky def
       // pravy je node_def_list
