@@ -271,6 +271,9 @@ static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTabl
                 case OT_CONCAT:
                 case OT_IDIVIDE:
                 case OT_CONV:
+                case OT_UNARY_PLUS:
+                case OT_UNARY_MINUS:
+                case OT_PUSH:
                     break;
             }
             
@@ -442,8 +445,8 @@ static void recursiveSemanticCheck(AST_Node* ptr, htab_t* hashTable, htab_t* loc
                     exit(4);
                 }
                 htabItem_t* pItem = htabWriteNew(funcScope, param->name);
-                param->symbol = pItem;
                 if (pItem == NULL) exit(99);
+                param->symbol = pItem;
                 pItem->isFunction = false;
                 pItem->isMutable = false;
                 pItem->paramCount = 0;
