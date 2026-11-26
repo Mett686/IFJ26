@@ -45,6 +45,8 @@ indentation_stack_t* push(indentation_stack_t* stack, unsigned spaces){
 indentation_stack_t indentationStack = {.top = 0, .capacity = (size_t)STACK_STARTING_CAPACITY, .stack = NULL};
 
 token_t getToken(FILE* stream) {
+    START_DEDENTATION:
+    static bool EOFreached = false;
     bool foundToken = false;
     static EState state = ST_START;
     token_t token = {.type = TKN_NONE};
@@ -69,10 +71,16 @@ token_t getToken(FILE* stream) {
             toDedent--;
             foundToken = true;
             break;
+        }
+        if (EOFreached) {
+            token.type = TKN_EOF;
+            foundToken = true;
+            break;
         } else if (toIndent){
             token.type = TKN_INDENTATION;
             toIndent = false;
             foundToken = true;
+            break;
         }
         if (state != ST_INDENTATION) {
             c = getc(stream);
@@ -586,10 +594,13 @@ token_t getToken(FILE* stream) {
             break;
         }
     }
+    if(token.type == TKN_EOF && !EOFreached){ //EOF reached for the first time, dedent everything
+        toDedent = (unsigned)indentationStack.top;
+        indentationStack.top = 0;
+        EOFreached = true;
+        goto START_DEDENTATION;
+    }
     if(token.type != TKN_ID && token.type != TKN_STRING && token.type != TKN_MULTILINE_STRING)
         free(string.str);
-#ifdef DEBUG
-        fprintf(stderr, "token found: %d\n", token.type);
-#endif
     return token;
 }
