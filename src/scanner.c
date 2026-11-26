@@ -74,11 +74,10 @@ token_t getToken(FILE* stream) {
             toIndent = false;
             foundToken = true;
         }
-        c = getc(stream);
-#ifdef DEBUG
-        fprintf(stderr, "char: '%c',\t state: %d,\t %s\n", c, state, string.str);
-#endif
-        EOF_AND_OUT_OF_ASCII_CHECK
+        if (state != ST_INDENTATION) {
+            c = getc(stream);
+            EOF_AND_OUT_OF_ASCII_CHECK
+        }
         switch (state) //https://share.gemini.google/zIizBiReNRVX
         {
         case ST_START: 
@@ -90,6 +89,7 @@ token_t getToken(FILE* stream) {
                 token.intValue = (c - '0');
                 state = ST_NONZERO_BEGINNING;
             }
+            else if (c == 10) state = ST_INDENTATION;
             else if (c == '-') {foundToken = true; token.type = TKN_MINUS;}
             else if (c == '+') {foundToken = true; token.type = TKN_PLUS;}
             else if (c == '/') state = ST_DIVISION_SLASH;
@@ -126,6 +126,7 @@ token_t getToken(FILE* stream) {
             }
             break;
         case ST_INDENTATION:
+            fprintf(stderr, "entered indentation\n");
             INDENTATION_START:
             bool tabPresent = false;
             unsigned spaces = 0;
@@ -134,9 +135,9 @@ token_t getToken(FILE* stream) {
             while ((0 <= (c = getc(stream)) && c <= 32) || c == 127){ //consuming whitespaces
                 if (c == ' ')
                     spaces++;
-                else if (c = 10)
+                else if (c == 10)
                     goto INDENTATION_START;
-                else if (c = 9)
+                else if (c == 9)
                     tabPresent = true;
             }
             if(tabPresent)
