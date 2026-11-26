@@ -33,7 +33,7 @@ static void generate_node(const AST_Node* node)
       // koren definuje zabudovane funkce, ".IFJcode26" vypisuje codeGenerate
       // jinak se chova jako def list
 
-      // TODO tisk "vychozich" funkci
+      fprintf(file, STD_FUNC_STR); // tisk standartnich funkci
 
     case NODE_DEF_LIST:
       // levy je nejaky def
@@ -233,28 +233,29 @@ void expGenerate(AST_Node* node) {
   }
 }
 
-void codeGenerate(FILE *output, const AST_Node *root)
+bool codeGenerate(FILE *output, const AST_Node *root)
 {
   if (output == NULL) {
     fprintf(stderr, "codegen: output stream is required\n");
-    exit(99);
+    return false;
   }
   if (root == NULL) {
     fprintf(stderr, "codegen: AST root is required\n");
-    exit(99);
+    return false;
   }
   file = output;
 
   if (fputs(".IFJcode26\n", output) == EOF) {
     fprintf(stderr, "codegen: failed to write output: %s\n",
             errno != 0 ? strerror(errno) : "unknown output error");
-    exit(99);
+    return false;
   }
 
   generate_node(root);
   if (ferror(output)) {
     fprintf(stderr, "codegen: failed while writing output: %s\n",
             errno != 0 ? strerror(errno) : "unknown output error");
-    exit(99);
+    return false;
   }
+  return true;
 }

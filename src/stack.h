@@ -24,8 +24,8 @@ typedef struct Stack{
 
 
 Stack* stack_initialize();
-Stack* stack_push_precedence(Stack *stack, Precedence precedence);
-Stack* stack_push(Stack *stack,Symbol_Category category,Precedence_Symbol symbol, token_t *token);
-Stack* stack_pop(Stack *stack);
+void stack_push_precedence(Stack **stack, Precedence precedence);
+void stack_push(Stack **stack,Symbol_Category category,Precedence_Symbol symbol, token_t *token);
+Stack* stack_pop(Stack **stack);
 
 #endif
