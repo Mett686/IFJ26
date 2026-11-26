@@ -29,7 +29,7 @@ void stringAppend(string_t* string, int c){ //https://share.gemini.google/VieLzV
 
 indentation_stack_t* push(indentation_stack_t* stack, unsigned spaces){
     if (!stack) {fprintf(stderr, "scanner: Tried to push to a NULL stack.\n"); return NULL;}
-    if(stack->top + 1 >= (int)stack->capacity){
+    if(stack->top + 1 >= stack->capacity){
         size_t new_capacity = (stack->capacity == 0) ? STACK_STARTING_CAPACITY : stack->capacity * 2;
         unsigned* tmp = realloc(stack->stack, new_capacity * sizeof(*stack->stack));
         if(!tmp)
@@ -59,7 +59,7 @@ token_t getToken(FILE* stream) {
     string.str = (char*)malloc(STRING_STARTING_CAPACITY * sizeof(*string.str));
     if (string.str == NULL)
         exit(99);
-    unsigned depthInParentheses = 0; //NL v závorkách se chová jako obyčejný whitespace
+    unsigned depthInParentheses = 0; //NL v závorkách se chová jako obyčefjný whitespace
     int c;
     while (!foundToken) 
     {
