@@ -352,6 +352,7 @@ void parser_block(FILE* stream,token_t *token,AST_Node*node){
     if (token->type == TKN_INDENTATION){
         node->left = create_node(NODE_BODY);
         parser_statementList(stream,token,node->left);
+        fprintf(stderr, "%d\n", token->type);
         if(token->type != TKN_DEDENTATION){
             exit(2);
         }

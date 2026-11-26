@@ -597,7 +597,7 @@ token_t getToken(FILE* stream) {
         }
     }
     if(token.type == TKN_EOF && !EOFreached){ //EOF reached for the first time, dedent everything
-        toDedent = (unsigned)indentationStack.top;
+        toDedent = (unsigned)(indentationStack.top+1);
         indentationStack.top = 0;
         EOFreached = true;
         goto START_GETTOKEN;
