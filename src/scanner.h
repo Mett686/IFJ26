@@ -38,7 +38,7 @@ typedef enum { //TODO add newline
 typedef struct {
     ETokenType type;
     union {
-        int intValue; //TODO rozsah
+        long long int intValue;
         double doubleValue;
         char* string;
     };
