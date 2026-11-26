@@ -348,6 +348,7 @@ void parser_body(FILE*stream,token_t *token,AST_Node*node){
 
 void parser_block(FILE* stream,token_t *token,AST_Node*node){
     *token = getToken(stream);
+    fprintf(stderr, "%d\n", token->type);
     if (token->type == TKN_INDENTATION){
         node->left = create_node(NODE_BODY);
         parser_statementList(stream,token,node->left);
