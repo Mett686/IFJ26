@@ -84,6 +84,7 @@ token_t getToken(FILE* stream) {
         }
         if (state != ST_INDENTATION) {
             c = getc(stream);
+            fprintf(stderr, "%c", c);
             EOF_AND_OUT_OF_ASCII_CHECK
         }
         switch (state) //https://share.gemini.google/zIizBiReNRVX
