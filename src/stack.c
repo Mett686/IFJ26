@@ -103,3 +103,4 @@ Precedence_Symbol stack_top_precedence_symbol(Stack *stack){
     }
     return tmp->symbol;
 }
+
