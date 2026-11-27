@@ -5,7 +5,6 @@
 // Autor: Martin Knotek (xknotem00)
 // Autor: Filip Maxa (xmaxafi00)
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include "parser.h"
@@ -13,7 +12,6 @@
 #include "htab.h"
 #include "abtDecoding.h"
 #include "codegen.h"
-
 
 int main(int argc, char** argv) {
     AST_Node* ast;
@@ -37,7 +35,7 @@ int main(int argc, char** argv) {
         return 99;
     }
 
-    ast = parser(input,htab);
+    ast = parser(input, htab);
     if (ast == NULL) {
         fprintf(stderr, "main: parser failed to create the syntax tree\n");
         htabDestroy(htab);

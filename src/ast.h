@@ -11,94 +11,87 @@
 #include <stdbool.h>
 #include "htab.h"
 
-typedef enum{
-NODE_BODY, // --
-// left - STATEMENT_LIST
-NODE_PROGRAM, // --
-// left - nejaka def
-// right - DEF_LIST
-NODE_DEF_LIST, // --
-// left - nejaka def
-// right - DEF_LIST
-NODE_FUNC_DEF, // 
-// left - PARAM
-// right - STATEMENT_LIST
-NODE_FUNC_DEF_MAIN, // 
-// left - PARAM
-// right - STATEMENT_LIST
-NODE_PARAM, // 
-// left - PARAM
-NODE_STATEMENT_LIST, // -- 
-// left - FUNC_CALL, ASSIGN, VAL, VAR, IF, WHILE, EXP, RETURN
-// right - STATEMENT_LIST
-NODE_FUNC_CALL, //
-// left - ARG_LIST
-NODE_ASSIGN, // -- id
-// left - EXP
-NODE_VAL_DEF, // -- id
-// left - EXP
-NODE_VAR_DEF,
-// left - EXP
-NODE_IF, //
-// left - EXP
-// right - STATEMENT_LIST
-// next - ELSE
-NODE_ELSE, //
-// left - STATEMENT_LIST
-NODE_WHILE_LOOP, //
-// left - EXP
-// right - STATEMENT_LIST
-NODE_ARG_LIST, //
-// left - EXP
-// right - ARG_LIST
-NODE_RETURN,
-// left - EXP -- musi dopnovat semAn
-NODE_EXP // TODO
-}Node_type;
+typedef enum {
+    NODE_BODY, // --
+    // left - STATEMENT_LIST
+    NODE_PROGRAM, // --
+    // left - nejaka def
+    // right - DEF_LIST
+    NODE_DEF_LIST, // --
+    // left - nejaka def
+    // right - DEF_LIST
+    NODE_FUNC_DEF, //
+    // left - PARAM
+    // right - STATEMENT_LIST
+    NODE_FUNC_DEF_MAIN, //
+    // left - PARAM
+    // right - STATEMENT_LIST
+    NODE_PARAM, //
+    // left - PARAM
+    NODE_STATEMENT_LIST, // --
+    // left - FUNC_CALL, ASSIGN, VAL, VAR, IF, WHILE, EXP, RETURN
+    // right - STATEMENT_LIST
+    NODE_FUNC_CALL, //
+    // left - ARG_LIST
+    NODE_ASSIGN, // -- id
+    // left - EXP
+    NODE_VAL_DEF, // -- id
+    // left - EXP
+    NODE_VAR_DEF,
+    // left - EXP
+    NODE_IF, //
+    // left - EXP
+    // right - STATEMENT_LIST
+    // next - ELSE
+    NODE_ELSE, //
+    // left - STATEMENT_LIST
+    NODE_WHILE_LOOP, //
+    // left - EXP
+    // right - STATEMENT_LIST
+    NODE_ARG_LIST, //
+    // left - EXP
+    // right - ARG_LIST
+    NODE_RETURN,
+    // left - EXP -- musi dopnovat semAn
+    NODE_EXP // TODO
+} Node_type;
 
-typedef enum{
-OT_UNARY_PLUS,
-OT_UNARY_MINUS,
-OT_PLUS,
-OT_MINUS,
-OT_DIVIDE,
-OT_IDIVIDE,
-OT_EQUAL,
-OT_NOT_EQUAL,
-OT_LESS,
-OT_GREATER,
-OT_LESS_EQUAL,
-OT_GREATER_EQUAL,
-OT_TIMES,
-OT_AND,
-OT_OR,
-OT_CONCAT,
-OT_PUSH,
-OT_CONV
-}Operator_type;
+typedef enum {
+    OT_UNARY_PLUS,
+    OT_UNARY_MINUS,
+    OT_PLUS,
+    OT_MINUS,
+    OT_DIVIDE,
+    OT_IDIVIDE,
+    OT_EQUAL,
+    OT_NOT_EQUAL,
+    OT_LESS,
+    OT_GREATER,
+    OT_LESS_EQUAL,
+    OT_GREATER_EQUAL,
+    OT_TIMES,
+    OT_AND,
+    OT_OR,
+    OT_CONCAT,
+    OT_PUSH,
+    OT_CONV
+} Operator_type;
 
-typedef enum{
-TYPE_INT,
-TYPE_DOUBLE,
-TYPE_STRING,
-TYPE_BOOL,
-TYPE_UNIT,
-TYPE_NULL
-}Data_Type;
+typedef enum { TYPE_INT, TYPE_DOUBLE, TYPE_STRING, TYPE_BOOL, TYPE_UNIT, TYPE_NULL } Data_Type;
 
-typedef struct AST_Node{
+typedef struct AST_Node {
     Node_type node_type;
     struct AST_Node* next;
     struct AST_Node* left;
     struct AST_Node* right;
-    
-    char *name;
+
+    char* name;
     htabItem_t* symbol; // sem doplnit odkaz do TS na dany zaznam
-    
+
     Data_Type data_type;
     long long int int_value;
     double double_value;
-    char*  string_value;
+    char* string_value;
     bool bool_value;
 
     Operator_type operator_type;

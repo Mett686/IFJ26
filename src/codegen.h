@@ -12,14 +12,10 @@
 #include <stdio.h>
 #include "ast.h"
 
-typedef enum{
-  GF,
-  TF,
-  LF
-} Frame_t;
+typedef enum { GF, TF, LF } Frame_t;
 
 /* Emits the IFJcode26 header and traverses the AST. */
-bool codeGenerate(FILE *output, const AST_Node *root);
+bool codeGenerate(FILE* output, const AST_Node* root);
 
 // Predeclares variables in while loop bodies.
 void defvarPregen(AST_Node* node);

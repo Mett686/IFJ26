@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -pedantic -Wall -Wextra -Isrc -MMD -MP
 LDLIBS =
-nazev = IFJ-archiv
+nazev = xknotem00
 INTERPRETER ?= ./interpret
 
 SRCS = \
@@ -58,6 +58,12 @@ test-final: compiler
 zip:
 	zip -r $(nazev).zip src/ dokumentace.pdf rozdeleni Makefile tests/
 
+check: zip
+	rm -f -r tmp_testdir
+	mkdir tmp_testdir
+	./is_it_ok.sh $(nazev).zip tmp_testdir
+	rm -f -r tmp_testdir
+
 doc:
 	pdflatex dokumentace.tex
 
@@ -66,4 +72,4 @@ clean:
 
 -include $(DEPS) $(TEST_DEPS)
 
-.PHONY: all build test test-final scanner-test parser-test ast-test clean zip scannertest documentation
+.PHONY: all build test test-final scanner-test parser-test ast-test clean zip scannertest documentation check
