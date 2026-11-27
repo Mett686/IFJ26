@@ -109,11 +109,11 @@ static void generate_node(const AST_Node* node)
       // vyhodnoceni podminky
       scopecnt++;
       generate_node(node->left); // melo by na stack hodit navratovou vec
-      fprintf(file, "PUSHS 0\n");
+      fprintf(file, "PUSHS bool@true\n");
       // if
       unsigned myIfCnt = ifcnt;
       ifcnt++;
-      fprintf(file, "JUMPIFEQS %s$IF$%d$else\n", funcName, myIfCnt);
+      fprintf(file, "JUMPIFNEQS %s$IF$%d$else\n", funcName, myIfCnt);
       //telo if
       generate_node(node->right);
       fprintf(file, "JUMP %s$IF$%d$end\n", funcName, myIfCnt);
@@ -145,10 +145,10 @@ static void generate_node(const AST_Node* node)
       fprintf(file, "LABEL %s$while$%d$start\n", funcName, myWhileCnt); 
       // vyhodnoceni podminky
       generate_node(node->left);
-      fprintf(file, "PUSHS 0\n");
+      fprintf(file, "PUSHS bool@true\n");
       scopecnt++;
       // podmineny skok
-      fprintf(file, "JUMPIFEQS %s$while$%d$end\n", funcName, myWhileCnt);
+      fprintf(file, "JUMPIFNEQS %s$while$%d$end\n", funcName, myWhileCnt);
       fprintf(file, "CLEARS\n");
       // telo while bez defvar
       generate_node(node->right);

@@ -110,6 +110,7 @@ htabItem_t* htabWrite(htab_t* t, char* key) {
     // fill entry
     strcpy(item->key, key);
     item->hash = hashFunction(key, OFFSET_BASIS);
+    item->parent = t;
     t->size++;
   }
   return item;
@@ -132,6 +133,7 @@ htabItem_t* htabWriteNew(htab_t* t, char* key) {
   // fill entry
   strcpy(item->key, key);
   item->hash = hashFunction(key, OFFSET_BASIS);
+  item->parent = t;
   t->size++;
   return item;
 }

@@ -118,7 +118,6 @@ void parser_defFunction(FILE*stream,token_t *token,AST_Node*node,htab_t *table){
 
     if(token->type == TKN_ID){
         node->name = token->string;
-        htabItem_t *htab_item = htabWriteNew(table,token->string);
         *token = getToken(stream);
 
         if(token->type == TKN_OPENING_PARENTHESES){
@@ -180,8 +179,8 @@ void parser_defMainFunc(FILE* stream,token_t *token,AST_Node *node){
                 *token=getToken(stream);
 
                 if(token->type == TKN_OPENING_PARENTHESES){
-                    node->left = create_node(NODE_PARAM);
-                    parser_parameterList(stream,token,node->left);
+                    //node->left = create_node(NODE_PARAM);
+                    parser_parameterList(stream,token,node);
                     
 
                     if(token->type == TKN_CLOSING_PARENTHESES){
@@ -466,9 +465,18 @@ void parser_statementList(FILE* stream,token_t *token,AST_Node*node){
                 parser_between(stream,token);
             break;
             case TKN_OPENING_PARENTHESES:
+                token_t previous =*token;
+                *token = getToken(stream);
+                if(token->type== TKN_CLOSING_PARENTHESES){
+                    AST_Node *unit_node = create_node(NODE_EXP);
+                    unit_node->data_type = TYPE_UNIT;
+                    node->left = unit_node;
+                    *token =getToken(stream);
+                    parser_between(stream,token);
+                }else{
                 node->left = create_node(NODE_EXP);
-                parser_expression_inicial(stream,token,node);
-                parser_between(stream,token);
+                parser_exp_prepare(stream,token,previous,node);
+                parser_between(stream,token);}
             break;
             case TKN_RETURN:
                 node->left = create_node(NODE_RETURN);
@@ -795,6 +803,8 @@ void parser_parameterList(FILE*stream,token_t *token,AST_Node*node){
     *token = getToken(stream);
     
     if(token->type == TKN_ID){
+        node->left = create_node(NODE_PARAM);
+        node=node->left;
         node->name= token->string;
         
         parser_parameter(stream,token,node);
