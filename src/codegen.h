@@ -18,8 +18,8 @@ typedef enum{
 /* Emits the IFJcode26 header and traverses the AST. */
 bool codeGenerate(FILE *output, const AST_Node *root);
 
-// Pregenerates while loop variables 
-unsigned defvarPregen(AST_Node* node, unsigned scopecnt);
+// Predeclares variables in while loop bodies.
+void defvarPregen(AST_Node* node);
 
 // Generates expressions
 void expGenerate(const AST_Node* node);

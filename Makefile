@@ -2,6 +2,7 @@ CC = gcc
 CFLAGS = -pedantic -Wall -Wextra -Isrc -MMD -MP
 LDLIBS =
 nazev = IFJ-archiv
+INTERPRETER ?= ./interpret
 
 SRCS = \
 	src/main.c \
@@ -32,8 +33,11 @@ tests/scanner_tester.o: tests/scanner_tester.c
 scannertest: src/scanner.o tests/scanner_tester.o
 	$(CC) $(CFLAGS) src/scanner.o tests/scanner_tester.o -o scanner_test $(LDLIBS)
 
-test: scannertest
+test: scannertest test-final
 	./scanner_test
+
+test-final: compiler
+	INTERPRETER="$(INTERPRETER)" ./tests/run_final_tests.sh
 
 zip:
 	zip -r $(nazev).zip src/ dokumentace.pdf rozdeleni Makefile tests/
@@ -46,4 +50,4 @@ clean:
 
 -include $(DEPS) tests/scanner_tester.d
 
-.PHONY: all build test clean zip scannertest documentation
+.PHONY: all build test test-final clean zip scannertest documentation

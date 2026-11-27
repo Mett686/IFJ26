@@ -59,7 +59,7 @@ static void registerBuiltins(htab_t* hashTable) {
     addBuiltin(hashTable, "toStr",      TYPE_STRING, 1, pAny);
     addBuiltin(hashTable, "toInt",      TYPE_INT,    1, pDouble);
     addBuiltin(hashTable, "strLength",  TYPE_INT,    1, pString);
-    addBuiltin(hashTable, "substr",     TYPE_STRING, 3, pSubstr);
+    addBuiltin(hashTable, "subStr",     TYPE_STRING, 3, pSubstr);
     addBuiltin(hashTable, "ord",        TYPE_INT,    2, pOrd);
     addBuiltin(hashTable, "chr",        TYPE_STRING, 1, pInt);
 }
@@ -197,10 +197,12 @@ static void checkNode(AST_Node* parent, htab_t* hashTable, htab_t* localHashTabl
                         parent->data_type = TYPE_STRING;
                     } else if (isNumericType(leftType) && isNumericType(rightType)) {
                         parent->data_type = (leftType == TYPE_DOUBLE || rightType == TYPE_DOUBLE) ? TYPE_DOUBLE : TYPE_INT;
-                        if (leftType == TYPE_INT) {
-                            parent->left = wrapWithNode(NODE_EXP, parent->left);
-                        } else if (rightType == TYPE_INT) {
-                            parent->right = wrapWithNode(NODE_EXP, parent->right);
+                        if (parent->data_type == TYPE_DOUBLE) {
+                            if (leftType == TYPE_INT) {
+                                parent->left = wrapWithNode(NODE_EXP, parent->left);
+                            } else if (rightType == TYPE_INT) {
+                                parent->right = wrapWithNode(NODE_EXP, parent->right);
+                            }
                         }
                     } else {
                         fprintf(stderr, "semantická analýza: nekompatibilní typy u operátoru '+'.\n");

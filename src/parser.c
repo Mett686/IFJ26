@@ -34,6 +34,9 @@ AST_Node* create_node(Node_type type){
     node->node_type = type;
     node->data_type = TYPE_NULL;
     node->name = NULL;
+    if (type == NODE_EXP) {
+        node->operator_type = OT_PUSH;
+    }
 
     return node;
 }

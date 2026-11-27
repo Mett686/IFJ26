@@ -83,14 +83,14 @@ static AST_Node* make_stmt_list(AST_Node* stmts[], int stmt_count) {
 
 // Verifies that an AST pointer was wrapped in a conversion node of expected_type
 static void assert_wrapped_with(AST_Node* wrapper, AST_Node* original_child,
-                              Node_type expected_node_type, Data_Type expected_child_dtype) {
+                              Node_type expected_node_type, Data_Type expected_wrapper_dtype) {
     assert(wrapper != NULL);
     assert(wrapper != original_child);
     assert(wrapper->node_type == expected_node_type);
     assert(wrapper->left == original_child);
     assert(wrapper->right == NULL);
     assert(wrapper->next == NULL);
-    assert(wrapper->data_type == expected_child_dtype);
+    assert(wrapper->data_type == expected_wrapper_dtype);
 }
 
 static void run_expect_exit(const char* test_name, int expected_code, void (*fn)(void)) {
@@ -204,7 +204,7 @@ static void body_builtin_toint_from_int_promoted(void) {
     AST_Node* funcs[] = { m };
     semanticCheck(make_program(funcs, 1), t);
     assert(call->data_type == TYPE_INT);
-    assert_wrapped_with(arg->left, orig_arg, NODE_EXP, TYPE_INT);
+    assert_wrapped_with(arg->left, orig_arg, NODE_EXP, TYPE_DOUBLE);
 }
 void test_07_builtin_toint_int_arg(void) { run_expect_pass("07_builtin_toint_int_arg", body_builtin_toint_from_int_promoted); }
 
@@ -224,7 +224,7 @@ static void body_builtin_substr_ok(void) {
     AST_Node* a3 = make_arg_node(make_leaf_exp(TYPE_INT, NULL), NULL);
     AST_Node* a2 = make_arg_node(make_leaf_exp(TYPE_INT, NULL), a3);
     AST_Node* a1 = make_arg_node(make_leaf_exp(TYPE_STRING, NULL), a2);
-    AST_Node* call = make_node(NODE_FUNC_CALL, TYPE_NULL, "substr", OT_PLUS, a1, NULL, NULL);
+    AST_Node* call = make_node(NODE_FUNC_CALL, TYPE_NULL, "subStr", OT_PLUS, a1, NULL, NULL);
     AST_Node* stmts[] = { call };
     AST_Node* m = make_main_def("main", TYPE_UNIT, NULL, make_stmt_list(stmts, 1));
     AST_Node* funcs[] = { m };
@@ -349,7 +349,7 @@ static void body_var_int_to_double_init(void) {
     AST_Node* funcs[] = { m };
     semanticCheck(make_program(funcs, 1), t);
     assert(v->data_type == TYPE_DOUBLE);
-    assert_wrapped_with(v->left, orig, NODE_EXP, TYPE_INT);
+    assert_wrapped_with(v->left, orig, NODE_EXP, TYPE_DOUBLE);
 }
 void test_19_var_int_to_double_init(void) { run_expect_pass("19_var_int_to_double_init", body_var_int_to_double_init); }
 
@@ -529,7 +529,7 @@ static void body_exp_div_int_double(void) {
     semanticCheck(make_program(funcs, 1), t);
     assert(e->data_type == TYPE_DOUBLE);
     assert(e->operator_type == OT_DIVIDE);
-    assert_wrapped_with(e->left, lhs, NODE_EXP, TYPE_INT);
+    assert_wrapped_with(e->left, lhs, NODE_EXP, TYPE_DOUBLE);
     assert(e->right == rhs);
 }
 void test_34_exp_div_int_double(void) { run_expect_pass("34_exp_div_int_double", body_exp_div_int_double); }
@@ -692,7 +692,7 @@ static void body_return_int_in_double_fn_ok(void) {
     AST_Node* m = make_main_def("main", TYPE_UNIT, NULL, NULL);
     AST_Node* funcs[] = { f, m };
     semanticCheck(make_program(funcs, 2), t);
-    assert_wrapped_with(ret->left, orig, NODE_EXP, TYPE_INT);
+    assert_wrapped_with(ret->left, orig, NODE_EXP, TYPE_DOUBLE);
 }
 void test_49_return_int_in_double_ok(void) { run_expect_pass("49_return_int_in_double_ok", body_return_int_in_double_fn_ok); }
 
@@ -720,7 +720,7 @@ static void body_wrap_plus_left_int_right_double(void) {
     semanticCheck(make_program(funcs, 1), t);
     assert(e->data_type == TYPE_DOUBLE);
     assert(e->operator_type == OT_PLUS);
-    assert_wrapped_with(e->left, lhs, NODE_EXP, TYPE_INT);
+    assert_wrapped_with(e->left, lhs, NODE_EXP, TYPE_DOUBLE);
     assert(e->right == rhs);
 }
 void test_51_wrap_plus_left_int_right_double(void) { run_expect_pass("51_wrap_plus_left_int_right_double", body_wrap_plus_left_int_right_double); }
@@ -736,7 +736,7 @@ static void body_wrap_plus_left_double_right_int(void) {
     semanticCheck(make_program(funcs, 1), t);
     assert(e->data_type == TYPE_DOUBLE);
     assert(e->left == lhs);
-    assert_wrapped_with(e->right, rhs, NODE_EXP, TYPE_INT);
+    assert_wrapped_with(e->right, rhs, NODE_EXP, TYPE_DOUBLE);
 }
 void test_52_wrap_plus_left_double_right_int(void) { run_expect_pass("52_wrap_plus_left_double_right_int", body_wrap_plus_left_double_right_int); }
 
@@ -756,12 +756,12 @@ static void body_wrap_minus_both_sides(void) {
     semanticCheck(make_program(funcs, 1), t);
 
     assert(e1->data_type == TYPE_DOUBLE);
-    assert_wrapped_with(e1->left, l1, NODE_EXP, TYPE_INT);
+    assert_wrapped_with(e1->left, l1, NODE_EXP, TYPE_DOUBLE);
     assert(e1->right == r1);
 
     assert(e2->data_type == TYPE_DOUBLE);
     assert(e2->left == l2);
-    assert_wrapped_with(e2->right, r2, NODE_EXP, TYPE_INT);
+    assert_wrapped_with(e2->right, r2, NODE_EXP, TYPE_DOUBLE);
 }
 void test_53_wrap_minus_both_sides(void) { run_expect_pass("53_wrap_minus_both_sides", body_wrap_minus_both_sides); }
 
@@ -781,12 +781,12 @@ static void body_wrap_times_both_sides(void) {
     semanticCheck(make_program(funcs, 1), t);
 
     assert(e1->data_type == TYPE_DOUBLE);
-    assert_wrapped_with(e1->left, l1, NODE_EXP, TYPE_INT);
+    assert_wrapped_with(e1->left, l1, NODE_EXP, TYPE_DOUBLE);
     assert(e1->right == r1);
 
     assert(e2->data_type == TYPE_DOUBLE);
     assert(e2->left == l2);
-    assert_wrapped_with(e2->right, r2, NODE_EXP, TYPE_INT);
+    assert_wrapped_with(e2->right, r2, NODE_EXP, TYPE_DOUBLE);
 }
 void test_54_wrap_times_both_sides(void) { run_expect_pass("54_wrap_times_both_sides", body_wrap_times_both_sides); }
 
@@ -802,7 +802,7 @@ static void body_wrap_divide_double_left_int_right(void) {
     assert(e->data_type == TYPE_DOUBLE);
     assert(e->operator_type == OT_DIVIDE);
     assert(e->left == lhs);
-    assert_wrapped_with(e->right, rhs, NODE_EXP, TYPE_INT);
+    assert_wrapped_with(e->right, rhs, NODE_EXP, TYPE_DOUBLE);
 }
 void test_55_wrap_divide_double_left_int_right(void) { run_expect_pass("55_wrap_divide_double_left_int_right", body_wrap_divide_double_left_int_right); }
 
@@ -860,7 +860,7 @@ static void body_wrap_user_func_double_arg_and_tostr_any(void) {
     semanticCheck(make_program(funcs, 2), t);
 
     assert(a1->left == arg1_orig); // Int -> Int: not wrapped
-    assert_wrapped_with(a2->left, arg2_orig, NODE_EXP, TYPE_INT); // Int -> Double: wrapped
+    assert_wrapped_with(a2->left, arg2_orig, NODE_EXP, TYPE_DOUBLE); // Int -> Double: wrapped
     assert(any_arg->left == any_orig); // TYPE_ANY: not wrapped
     assert(call_tostr->data_type == TYPE_STRING);
 }
@@ -875,7 +875,7 @@ static void body_wrap_val_double_from_int(void) {
     AST_Node* funcs[] = { m };
     semanticCheck(make_program(funcs, 1), t);
     assert(v->data_type == TYPE_DOUBLE);
-    assert_wrapped_with(v->left, orig, NODE_EXP, TYPE_INT);
+    assert_wrapped_with(v->left, orig, NODE_EXP, TYPE_DOUBLE);
 }
 void test_59_wrap_val_double_from_int(void) { run_expect_pass("59_wrap_val_double_from_int", body_wrap_val_double_from_int); }
 
@@ -888,7 +888,7 @@ static void body_wrap_assign_int_to_double_var(void) {
     AST_Node* m = make_main_def("main", TYPE_UNIT, NULL, make_stmt_list(stmts, 2));
     AST_Node* funcs[] = { m };
     semanticCheck(make_program(funcs, 1), t);
-    assert_wrapped_with(a->left, rhs, NODE_EXP, TYPE_INT);
+    assert_wrapped_with(a->left, rhs, NODE_EXP, TYPE_DOUBLE);
 }
 void test_60_wrap_assign_int_to_double_var(void) { run_expect_pass("60_wrap_assign_int_to_double_var", body_wrap_assign_int_to_double_var); }
 
@@ -1054,7 +1054,7 @@ static void body_nested_return_inside_if_ok(void) {
     AST_Node* m = make_main_def("main", TYPE_UNIT, NULL, NULL);
     AST_Node* funcs[] = { f, m };
     semanticCheck(make_program(funcs, 2), t);
-    assert_wrapped_with(ret->left, orig, NODE_EXP, TYPE_INT);
+    assert_wrapped_with(ret->left, orig, NODE_EXP, TYPE_DOUBLE);
 }
 void test_71_nested_return_inside_if_converts_ok(void) { run_expect_pass("71_nested_return_inside_if_converts_ok", body_nested_return_inside_if_ok); }
 
@@ -1100,8 +1100,23 @@ static void body_user_func_wrong_arg_count(void) {
 }
 void test_74_user_func_wrong_arg_count_exit_5(void) { run_expect_exit("74_user_func_wrong_arg_count_exit_5", 5, body_user_func_wrong_arg_count); }
 
+static void body_exp_plus_int_int_no_wrap(void) {
+    htab_t* t = htabCreate(HTAB_TEST_BUCKETS);
+    AST_Node* lhs = make_leaf_exp(TYPE_INT, NULL);
+    AST_Node* rhs = make_leaf_exp(TYPE_INT, NULL);
+    AST_Node* e = make_bin_exp(OT_PLUS, lhs, rhs);
+    AST_Node* stmts[] = { e };
+    AST_Node* m = make_main_def("main", TYPE_UNIT, NULL, make_stmt_list(stmts, 1));
+    AST_Node* funcs[] = { m };
+    semanticCheck(make_program(funcs, 1), t);
+    assert(e->data_type == TYPE_INT);
+    assert(e->left == lhs);
+    assert(e->right == rhs);
+}
+void test_75_exp_plus_int_int_no_wrap(void) { run_expect_pass("75_exp_plus_int_int_no_wrap", body_exp_plus_int_int_no_wrap); }
+
 int main(void) {
-    printf("Starting Semantic Analyzer Tests (abtDecoding.c) - 74 cases...\n\n");
+    printf("Starting Semantic Analyzer Tests (abtDecoding.c) - 75 cases...\n\n");
 
     // 1. @main & Program Structure
     test_01_valid_main_unit();
@@ -1194,7 +1209,8 @@ int main(void) {
     test_72_nested_return_inside_while_exit_6();
     test_73_bare_return_in_int_fn_exit_6();
     test_74_user_func_wrong_arg_count_exit_5();
+    test_75_exp_plus_int_int_no_wrap();
 
-    printf("\nAll 74 semantic tests passed!\n");
+    printf("\nAll 75 semantic tests passed!\n");
     return 0;
 }

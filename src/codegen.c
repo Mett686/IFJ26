@@ -37,6 +37,8 @@ static void generate_node(const AST_Node* node)
     case NODE_PROGRAM:
       // koren definuje zabudovane funkce, ".IFJcode26" vypisuje codeGenerate
       // jinak se chova jako def list
+      fprintf(file, STD_GLOBALS);
+      fprintf(file, "CALL MAIN\nEXIT int@0\n");
       fprintf(file, STD_FUNC_STR0); // tisk standartnich funkci
       fprintf(file, STD_FUNC_STR1); // tisk standartnich funkci
       
@@ -144,9 +146,9 @@ static void generate_node(const AST_Node* node)
       // pregenerace promennych
       unsigned myWhileCnt = whilecnt;
       whilecnt++;
+      if (cycleDepth == 0) defvarPregen(node->right);
       cycleDepth++;
       scopecnt++;
-      if(!cycleDepth) defvarPregen(node->right, scopecnt);
 
       fprintf(file, "LABEL %s$while$%d$start\n", funcName, myWhileCnt); 
       // vyhodnoceni podminky
@@ -155,13 +157,11 @@ static void generate_node(const AST_Node* node)
       scopecnt++;
       // podmineny skok
       fprintf(file, "JUMPIFNEQS %s$while$%d$end\n", funcName, myWhileCnt);
-      fprintf(file, "CLEARS\n");
       // telo while bez defvar
       generate_node(node->right);
       fprintf(file, "JUMP %s$while$%d$start\n", funcName, myWhileCnt);
       // konec
       fprintf(file, "LABEL %s$while$%d$end\n", funcName, myWhileCnt); 
-      fprintf(file, "CLEARS\n");
       cycleDepth--;
       scopecnt++;
       break;
@@ -184,30 +184,23 @@ static void generate_node(const AST_Node* node)
   return;
 }
 
-unsigned defvarPregen(AST_Node* node, unsigned scopecnt) {
-  if(!node) return scopecnt;
-  switch (node->node_type)
-  {
-  case NODE_VAL_DEF:
-    fprintf(file, "DEFVAR LF@%s$VAL$%d\n", node->name, scopecnt);
-    break;
-  case NODE_VAR_DEF:
-    fprintf(file, "DEFVAR LF@%s$VAR$%d\n", node->name, scopecnt);
-    break;
-  case NODE_FUNC_DEF:
-  case NODE_FUNC_DEF_MAIN:
-  case NODE_IF:
-  case NODE_ELSE:
-  case NODE_WHILE_LOOP:
-    scopecnt++;
-  default:
-    break;
+void defvarPregen(AST_Node* node) {
+  if (node == NULL) return;
+  switch (node->node_type) {
+    case NODE_VAL_DEF:
+    case NODE_VAR_DEF:
+      fprintf(file, "DEFVAR LF@%s$%d\n", node->name, node->symbol->parent->tableId);
+      break;
+    case NODE_FUNC_DEF:
+    case NODE_FUNC_DEF_MAIN:
+      return;
+    default:
+      break;
   }
-  
-  scopecnt = defvarPregen(node->left, scopecnt);
-  scopecnt = defvarPregen(node->right, scopecnt);
-  scopecnt = defvarPregen(node->next, scopecnt);
-  return scopecnt;
+
+  defvarPregen(node->left);
+  defvarPregen(node->right);
+  defvarPregen(node->next);
 }
 
 void expGenerate(const AST_Node* node) {
@@ -255,7 +248,7 @@ void expGenerate(const AST_Node* node) {
       break;
     case OT_CONCAT:
       fprintf(file, "POPS GF@CONCAT$$$0\nPOPS GF@CONCAT$$$1\n");
-      fprintf(file, "CONCAT GF@CONCAT$$$0 GF@CONCAT$$$0 GF@CONCAT$$$1\n");
+      fprintf(file, "CONCAT GF@CONCAT$$$0 GF@CONCAT$$$1 GF@CONCAT$$$0\n");
       fprintf(file, "PUSHS GF@CONCAT$$$0\n");
       break;
     case OT_CONV:

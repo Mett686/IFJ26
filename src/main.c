@@ -45,9 +45,6 @@ int main(int argc, char** argv) {
         return 99;
     }
 
-    // ast debug print
-    ast_print(stderr, ast);
-
     semanticCheck(ast, htab);
     if (!codeGenerate(stdout, ast)) {
         fprintf(stderr, "main: code generation failed\n");
@@ -57,6 +54,8 @@ int main(int argc, char** argv) {
         }
         return 99;
     }
+    // ast debug print
+    ast_print(stderr, ast);
 
     if (input != stdin) {
         fclose(input);
