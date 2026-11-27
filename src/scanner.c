@@ -136,7 +136,6 @@ token_t getToken(FILE* stream) {
             }
             break;
         case ST_INDENTATION:
-            fprintf(stderr, "entered indentation\n");
             INDENTATION_START:
             bool tabPresent = false;
             unsigned spaces = 0;

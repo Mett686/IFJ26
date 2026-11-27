@@ -7,6 +7,9 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 HTAB_SRC="../src/htab.c"
 TEST_SRC="test_htab.c"
 EXECUTABLE="./htab_test"
@@ -35,7 +38,7 @@ fi
 echo -e "${GREEN}Compilation successful.${NC}"
 
 echo "Running tests..."
-if $EXECUTABLE
+if "$EXECUTABLE"
 then
     echo -e "${GREEN}SUCCESS: Logic tests passed.${NC}"
 else
@@ -46,7 +49,7 @@ fi
 # Memory Leak check with Valgrind (if available)
 if command -v valgrind &> /dev/null; then
     echo -e "${YELLOW}Running Valgrind memory checks...${NC}"
-    if valgrind --leak-check=full --show-leak-kinds=all --error-exitcode=1 -q $EXECUTABLE
+    if valgrind --leak-check=full --show-leak-kinds=all --error-exitcode=1 -q "$EXECUTABLE"
     then
         echo -e "${GREEN}SUCCESS: No memory leaks detected.${NC}"
     else

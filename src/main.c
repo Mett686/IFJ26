@@ -10,7 +10,6 @@
 #include "htab.h"
 #include "abtDecoding.h"
 #include "codegen.h"
-#include "astPrint.h"
 
 
 int main(int argc, char** argv) {
@@ -54,9 +53,6 @@ int main(int argc, char** argv) {
         }
         return 99;
     }
-    // ast debug print
-    ast_print(stderr, ast);
-
     if (input != stdin) {
         fclose(input);
     }

@@ -2,7 +2,7 @@
  * parser_tests.c -- jednotkove testy syntakticke analyzy (parser.c) BEZ scanneru
  *
  * Preklad a spusteni (bez scanner.c a bez main.c):
- *   gcc -std=c11 -Wall -Wextra -g -I. -o test_parser parser_tests.c parser.c stack.c htab.c abtDecoding.c codegen.c
+ *   gcc -std=c11 -Wall -Wextra -g -Isrc -o test_parser tests/parser_tests.c src/parser.c src/stack.c src/htab.c src/abtDecoding.c src/codegen.c
  *   ./test_parser            # vsechny testy
  *   ./test_parser err_if     # jen testy, jejichz nazev obsahuje "err_if"
  *   ./test_parser -v         # nepotlaci stderr parseru (chybove hlasky)

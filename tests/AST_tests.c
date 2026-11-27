@@ -1,5 +1,5 @@
 /*
-- ast_tests.c -- testy tvaru AST generovaneho parserom (parser.c), BEZ scanneru
+- AST_tests.c -- testy tvaru AST generovaneho parserom (parser.c), BEZ scanneru
  *
 - AI-generated (Claude), prompt: "teraz potrebujem testy na to ci spravne generujem
 - strom ... poslem ti vsetky tokeny ktore budu nato potrebne a ty z toho vytvoris testy"
@@ -7,15 +7,15 @@
 - Princip
 - -------
 -  - getToken() je nahradeny atrapou: kazdy test je pole tokenov {typ, text}.
--    Text sa ulozi do token.string (mena premennych, funkcii, hodnoty literalov).
+-    Text sa ulozi do token.string; cisla sa prevedu na prislusne hodnoty tokenu.
 -  - parser(NULL, table) vrati AST. Strom sa vypise do kratkeho textoveho zapisu
 -    (nizsie) a porovna s ocakavanym retazcom. Pri zhode PASS, inak sa vypise
 -    expected/actual.
 -  - Kazdy test bezi vo vlastnom procese (fork), timeout 2 s.
  *
-- Preklad a spustenie (rovnaky zoznam suborov ako parser_tests.c, bez scanner.c):
--   gcc -std=c11 -Wall -Wextra -g -fsanitize=address -I. -o test_ast ast_tests.c \
--       parser.c stack.c htab.c abtDecoding.c codegen.c
+- Preklad a spustenie z korena repozitara (rovnaky zoznam suborov jako parser_tests.c):
+-   gcc -std=c11 -Wall -Wextra -g -fsanitize=address -Isrc -o test_ast \
+-       tests/AST_tests.c src/parser.c src/stack.c src/htab.c src/abtDecoding.c src/codegen.c
 -   ASAN_OPTIONS=detect_leaks=0:exitcode=77 ./test_ast
 -   ./test_ast expr_       # len testy s "expr_" v nazve
 -   ./test_ast -v          # nepotlaci stderr parsera
@@ -38,14 +38,14 @@
 -  RETURN: left = vyraz (NULL pre samostatny return)
 -  IF: left = podmienka, right = STATEMENT_LIST (then), next = ELSE (left = STATEMENT_LIST)
 -  WHILE_LOOP: left = podmienka, right = STATEMENT_LIST
--  EXP: list = literal/id (name = text tokenu), inak operator_type + left (+ right)
+-  EXP: list = literal/id, inak operator_type + left (+ right)
  *
 - Predpoklady, ktore ast.h nehovori (uprav testy, ak mas v kode iny zamer):
 -   - vyraz je v left uzlu priamo ako koren vyrazu (bez dalsieho obalovacieho EXP),
 -   - volanie funkcie na pravej strane (val/var/assign/return) je uzol FUNC_CALL v left,
 -   - samostatny vyraz alebo samostatne id ako prikaz je uzol EXP v STATEMENT_LIST.left,
--   - hodnoty literalov (int_value ...) sa netestuju, len name == text tokenu,
--   - operator_type listov sa netestuje (OT_ID je v ast.h, ale parser ho nenastavuje).
+-   - hodnoty literalov sa vypisuji z prislusnych poli AST,
+-   - operator_type listov sa netestuje; parser rozpoznava listy podla mena.
  *
 - Zapis stromu
 - ------------
@@ -90,7 +90,15 @@ token_t getToken(FILE *stream)
     memset(&t, 0, sizeof t);
     if (g_pos < g_n) {
         t.type = g_toks[g_pos].type;
-        if (g_toks[g_pos].text) t.string = strdup(g_toks[g_pos].text);
+        if (g_toks[g_pos].text) {
+            if (t.type == TKN_INT) {
+                t.intValue = strtoll(g_toks[g_pos].text, NULL, 10);
+            } else if (t.type == TKN_DOUBLE) {
+                t.doubleValue = strtod(g_toks[g_pos].text, NULL);
+            } else {
+                t.string = strdup(g_toks[g_pos].text);
+            }
+        }
         g_pos++;
     } else {
         t.type = TKN_EOF;
@@ -131,7 +139,6 @@ static const char *op_str(Operator_type o)
     case OT_TIMES:         return "*";
     case OT_AND:           return "&&";
     case OT_OR:            return "||";
-    case OT_ID:            return "id";
     default:               return "?op";
     }
 }
@@ -156,7 +163,25 @@ static void dump_expr(FILE *o, const AST_Node *n)
     if (!n) { fputs("_", o); return; }
     if (n->node_type == NODE_FUNC_CALL) { dump_call(o, n); return; }
     if (n->node_type != NODE_EXP) { fprintf(o, "<node %d>", (int)n->node_type); return; }
-    if (!n->left && !n->right) { fputs(n->name ? n->name : "?", o); return; }
+    if (!n->left && !n->right) {
+        switch (n->data_type) {
+        case TYPE_INT:
+            fprintf(o, "%lld", n->int_value);
+            return;
+        case TYPE_DOUBLE:
+            fprintf(o, "%.15g", n->double_value);
+            return;
+        case TYPE_STRING:
+            fputs(n->string_value ? n->string_value : "?", o);
+            return;
+        case TYPE_UNIT:
+            fputs("()", o);
+            return;
+        default:
+            fputs(n->name ? n->name : "?", o);
+            return;
+        }
+    }
 
     int unary = n->operator_type == OT_UNARY_PLUS || n->operator_type == OT_UNARY_MINUS;
     fprintf(o, "(%s ", op_str(n->operator_type));

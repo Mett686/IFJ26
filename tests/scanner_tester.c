@@ -1,10 +1,9 @@
 // scanner_tester.c
 // Autor: Filip Maxa, FIT
 
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "../src/scanner.h"
+#include "scanner.h"
 
 void token_print(token_t* token, FILE* outputFile){
 switch (token->type) //https://share.gemini.google/exHWaq43ZcTA
@@ -34,7 +33,7 @@ switch (token->type) //https://share.gemini.google/exHWaq43ZcTA
         fprintf(outputFile, "[EOF, ] ");
         break;
     case TKN_INT:
-        fprintf(outputFile, "[int_lit, %d] ", token->intValue);
+        fprintf(outputFile, "[int_lit, %lld] ", token->intValue);
         break;
     case TKN_INT_KEYWORD:
         fprintf(outputFile, "[Int, ] "); 
@@ -182,24 +181,29 @@ switch (token->type) //https://share.gemini.google/exHWaq43ZcTA
     }
 }
 
-int main (int argc, char* argv[]){
-    if (argc != 2)
-        return -1;
-    FILE* stream = fopen(argv[1], "r");
-    if (stream == NULL)
-        return -1;
-    FILE* file = fopen("scanner_tester_output.txt", "w");
-    if (file == NULL)
-        exit(-123);
+int main(int argc, char* argv[]) {
+    if (argc > 2) {
+        fprintf(stderr, "Usage: %s [input-file]\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    FILE* stream = stdin;
+    if (argc == 2) {
+        stream = fopen(argv[1], "r");
+        if (stream == NULL) {
+            perror(argv[1]);
+            return EXIT_FAILURE;
+        }
+    }
+
     token_t token = getToken(stream);
     while (token.type != TKN_EOF) {
-        token_print(&token, file);
+        token_print(&token, stdout);
         if(token.type == TKN_ID || token.type == TKN_STRING || token.type == TKN_MULTILINE_STRING)
             free(token.string);
         token = getToken(stream);
     }
-    token_print(&token, file);
-    fclose(file);
-    fclose(stream);
-    return 0;
+    token_print(&token, stdout);
+    if (stream != stdin) fclose(stream);
+    return EXIT_SUCCESS;
 }
