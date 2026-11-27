@@ -56,7 +56,7 @@ test-final: compiler
 	INTERPRETER="$(INTERPRETER)" ./tests/run_final_tests.sh
 
 zip:
-	zip -r $(nazev).zip src/ dokumentace.pdf rozdeleni Makefile tests/
+	zip -r $(nazev).zip src/ dokumentace.pdf Makefile
 
 check: zip
 	rm -f -r tmp_testdir
