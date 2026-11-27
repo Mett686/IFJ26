@@ -1,23 +1,25 @@
 CC = gcc
-CFLAGS = -pedantic -Wall -Wextra -Isrc -MMD -MP
+SOURCE_PATH = $(if $(wildcard src/main.c),src/,)
+CFLAGS = -pedantic -Wall -Wextra $(if $(SOURCE_PATH),-I$(SOURCE_PATH),-I.) -MMD -MP
 LDLIBS =
 nazev = xknotem00
 INTERPRETER ?= ./interpret
 
-SRCS = \
-	src/main.c \
-	src/scanner.c \
-	src/stack.c \
-	src/parser.c \
-	src/codegen.c \
-	src/htab.c \
-	src/abtDecoding.c
+SOURCE_NAMES = \
+	main.c \
+	scanner.c \
+	stack.c \
+	parser.c \
+	codegen.c \
+	htab.c \
+	abtDecoding.c
 
+SRCS = $(addprefix $(SOURCE_PATH),$(SOURCE_NAMES))
 OBJS = $(SRCS:.c=.o)
 DEPS = $(OBJS:.o=.d)
 TEST_OBJS = tests/scanner_tester.o tests/parser_tests.o tests/AST_tests.o
 TEST_DEPS = $(TEST_OBJS:.o=.d)
-PARSER_TEST_OBJS = src/parser.o src/stack.o src/htab.o src/abtDecoding.o src/codegen.o
+PARSER_TEST_OBJS = $(addprefix $(SOURCE_PATH),parser.o stack.o htab.o abtDecoding.o codegen.o)
 
 all: build
 
@@ -26,14 +28,14 @@ build: compiler
 compiler: $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o $@ $(LDLIBS)
 
-src/%.o: src/%.c
+%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 tests/%.o: tests/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-scannertest: src/scanner.o tests/scanner_tester.o
-	$(CC) $(CFLAGS) src/scanner.o tests/scanner_tester.o -o scanner_test $(LDLIBS)
+scannertest: $(SOURCE_PATH)scanner.o tests/scanner_tester.o
+	$(CC) $(CFLAGS) $(SOURCE_PATH)scanner.o tests/scanner_tester.o -o scanner_test $(LDLIBS)
 
 parser_test: tests/parser_tests.o $(PARSER_TEST_OBJS)
 	$(CC) $^ -o $@ $(LDLIBS)
@@ -56,7 +58,11 @@ test-final: compiler
 	INTERPRETER="$(INTERPRETER)" ./tests/run_final_tests.sh
 
 zip:
-	zip -r $(nazev).zip src/ dokumentace.pdf Makefile
+ifeq ($(OS),Windows_NT)
+	powershell -NoProfile -Command "Compress-Archive -Path 'src\*', 'Makefile' -DestinationPath $(nazev).zip -Force"
+else
+	zip -j -r $(nazev).zip src/ Makefile
+endif
 
 check: zip
 	rm -f -r tmp_testdir
