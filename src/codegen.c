@@ -57,7 +57,8 @@ static void generate_node(const AST_Node* node)
       scopecnt++;
       fprintf(file, "LABEL %s\n", funcName);
       fprintf(file, "CREATEFRAME\nPUSHFRAME\n");
-      generate_node(node->left);
+      fprintf(stderr, "generating: %s with %d params\n", funcName, node->symbol->paramCount);
+      if(node->symbol->paramCount) generate_node(node->left);
       generate_node(node->right);
       break;
     case NODE_FUNC_CALL:
@@ -72,13 +73,14 @@ static void generate_node(const AST_Node* node)
     case NODE_PARAM:
       // parametr
       // levy dalsi param
-      fprintf(file, "DEFVAR LF@%s$%s\n", funcName, node->name);
-      fprintf(file, "POPS LF@%s$%s\n", funcName, node->name);
+      fprintf(file, "DEFVAR LF@%s$%d\n", node->name, node->symbol->parent->tableId);
+      fprintf(file, "POPS LF@%s$%d\n", node->name, node->symbol->parent->tableId);
       generate_node(node->left);
       break;
     case NODE_BODY:
-      // koren statement listu
+      // telo obsahuje prvni prikaz vlevo a dalsi prikazy vpravo
       generate_node(node->left);
+      generate_node(node->right);
       break;
     case NODE_STATEMENT_LIST:
       // levy podstrom statement, val, var, if, while, exp, return
@@ -94,12 +96,16 @@ static void generate_node(const AST_Node* node)
     case NODE_VAL_DEF:
       // id
       // levy expression
-      if(!cycleDepth) fprintf(file, "DEFVAR %s@%s$%d\n", FRAME_S(frame), node->name, node->symbol->parent->tableId);
+      if(!cycleDepth) fprintf(file, "DEFVAR LF@%s$%d\n", node->name, node->symbol->parent->tableId);
+      generate_node(node->left);
+      fprintf(file, "POPS LF@%s$%d\n", node->name, node->symbol->parent->tableId);
       break;
     case NODE_VAR_DEF:
       // id
       // levy expression
-      if(!cycleDepth) fprintf(file, "DEFVAR %s@%s$%d\n", FRAME_S(frame), node->name, node->symbol->parent->tableId);
+      if(!cycleDepth) fprintf(file, "DEFVAR LF@%s$%d\n", node->name, node->symbol->parent->tableId);
+      generate_node(node->left);
+      fprintf(file, "POPS LF@%s$%d\n", node->name, node->symbol->parent->tableId);
       break;
     case NODE_IF:
       // levy exp
@@ -207,6 +213,7 @@ unsigned defvarPregen(AST_Node* node, unsigned scopecnt) {
 void expGenerate(const AST_Node* node) {
   switch (node->operator_type) {
     case OT_UNARY_PLUS:
+      fprintf(stderr, "codegen: invalid OT type in expression!\n");
       exit(99);
       break;
     case OT_UNARY_MINUS:
@@ -275,7 +282,7 @@ void expGenerate(const AST_Node* node) {
             break;
         }
       }
-    
+      break;
     // Boolthen TODO
     case OT_AND:
     case OT_OR:

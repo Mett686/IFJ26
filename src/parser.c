@@ -33,7 +33,8 @@ AST_Node* create_node(Node_type type){
     }
     node->node_type = type;
     node->data_type = TYPE_NULL;
-    
+    node->name = NULL;
+
     return node;
 }
 
@@ -179,8 +180,8 @@ void parser_defMainFunc(FILE* stream,token_t *token,AST_Node *node){
                 *token=getToken(stream);
 
                 if(token->type == TKN_OPENING_PARENTHESES){
-                    //node->left = create_node(NODE_PARAM);
-                    parser_parameterList(stream,token,node);
+                    node->left = create_node(NODE_PARAM);
+                    parser_parameterList(stream,token,node->left);
                     
 
                     if(token->type == TKN_CLOSING_PARENTHESES){
@@ -434,6 +435,7 @@ void parser_statementList(FILE* stream,token_t *token,AST_Node*node){
                 }else if(token->type == TKN_NEWLINE || token->type == TKN_SEMICOLON || token->type == TKN_DEDENTATION || token->type == TKN_EOF){
                     node->left = create_node(NODE_EXP);
                     node->left->name = tmp.string;
+                    node->left->operator_type = OT_PUSH;
                 }else{
                     parser_exp_prepare(stream, token ,tmp,node);
                 }
@@ -803,8 +805,8 @@ void parser_parameterList(FILE*stream,token_t *token,AST_Node*node){
     *token = getToken(stream);
     
     if(token->type == TKN_ID){
-        node->left = create_node(NODE_PARAM);
-        node=node->left;
+        //node->left = create_node(NODE_PARAM);
+        //node=node->left;
         node->name= token->string;
         
         parser_parameter(stream,token,node);
@@ -911,6 +913,7 @@ void parser_statementRest(FILE*stream,token_t *token,AST_Node*node){
         }else if(token->type == TKN_NEWLINE || token->type == TKN_DEDENTATION || token->type == TKN_CLOSING_PARENTHESES|| token->type == TKN_SEMICOLON|| token->type == TKN_EOF){
                 node->left = create_node(NODE_EXP);
                 node->left->name = id.string;
+                node->left->operator_type = OT_PUSH;
         }else if(token->type == TKN_PLUS || 
             token->type == TKN_MINUS ||
             token->type == TKN_TIMES ||
