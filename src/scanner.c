@@ -530,9 +530,9 @@ token_t getToken(FILE* stream) {
             else if (c == 10) {free(string.str); exit(1);} //LEX ERR 1 
             else {
                 state = ST_IN_STRING;
-                string.str[0] = c;
-                string.str[1] = '\0';
-                string.length = 1;
+                ungetc(c, stream);
+                string.str[0] = '\0';
+                string.length = 0;
             }
             break;
         case ST_TWO_QUOTATION_MARKS:
@@ -595,11 +595,38 @@ token_t getToken(FILE* stream) {
                 state = ST_IN_ESC_SEQ;
                 stringAppend(&string, c);
             }
+            else if (c == '#'){
+                stringAppend(&string, '\\');
+                stringAppend(&string, '0');
+                stringAppend(&string, '3');
+                stringAppend(&string, '5');
+            } 
+            else if (c == ' '){
+                stringAppend(&string, '\\');
+                stringAppend(&string, '0');
+                stringAppend(&string, '3');
+                stringAppend(&string, '2');
+            }
             else if (c == 10) {free(string.str); exit(1);} //LEX ERR 1 
             else stringAppend(&string, c);
             break; //else just stays
         case ST_IN_ESC_SEQ:
-            if (c == '"' || c == '\\' || c == 'n' || c == 'r' || c == 't') state = ST_IN_STRING;
+            if (c == '"' || c == '\\' || c == 'n' || c == 'r' || c == 't') {
+                if (c == 'n'){
+                    stringAppend(&string, '0');
+                    stringAppend(&string, '1');
+                    stringAppend(&string, '0');
+                } else if (c == 't') {
+                    stringAppend(&string, '0');
+                    stringAppend(&string, '0');
+                    stringAppend(&string, '9');
+                } else if (c == '\\') {
+                    stringAppend(&string, '0');
+                    stringAppend(&string, '9');
+                    stringAppend(&string, '2');
+                }
+                state = ST_IN_STRING;
+            }
             else {free(string.str); exit(1);} //LEX ERR 1 
             break;
         }
