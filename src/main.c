@@ -1,6 +1,9 @@
+// Implementace překladače imperativního jazyka IFJ26
 // main.c
-// Autor: Martin Knotek, FIT
-// Autor: Filip Maxa, FIT
+// Vstupní bod překladače
+
+// Autor: Martin Knotek (xknotem00)
+// Autor: Filip Maxa (xmaxafi00)
 
 
 #include <stdio.h>

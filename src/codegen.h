@@ -1,6 +1,9 @@
-//codegen.h
-// Autor: Martin Knotek, FIT
-// Autor: Filip Maxa, FIT
+// Implementace překladače imperativního jazyka IFJ26
+// codegen.h
+// Rozhraní generátoru výstupního kódu
+
+// Autor: Martin Knotek (xknotem00)
+// Autor: Filip Maxa (xmaxafi00)
 
 #ifndef CODEGEN_H
 #define CODEGEN_H

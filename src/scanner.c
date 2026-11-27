@@ -1,5 +1,8 @@
+// Implementace překladače imperativního jazyka IFJ26
 // scanner.c
-// Autor: Filip Maxa, FIT
+// Lexikální analyzátor
+
+// Autor: Filip Maxa (xmaxafi00)
 
 #include "scanner_private.h"
 #include "scanner.h"

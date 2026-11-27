@@ -1,5 +1,8 @@
+// Implementace překladače imperativního jazyka IFJ26
+// parser.h
+// Rozhraní syntaktického analyzátoru
 
-//autor: xmiklej00
+// Autor: Jakub Miklenčič (xmiklej00)
 
 #ifndef PARSER_H
 #define PARSER_H

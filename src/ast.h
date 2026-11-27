@@ -1,4 +1,10 @@
-//autor: xmiklej00,
+// Implementace překladače imperativního jazyka IFJ26
+// ast.h
+// Definice uzlů abstraktního syntaktického stromu
+
+// Autor: Jakub Miklenčič (xmiklej00)
+// Autor: Martin Knotek (xknotem00)
+
 #ifndef AST_H
 #define AST_H
 

@@ -1,3 +1,9 @@
+// Implementace překladače imperativního jazyka IFJ26
+// abtDecoding.c
+// Sémantická analýza a dekódování abstraktního syntaktického stromu
+
+// Autor: Marek Heckelmoser (xheckem00)
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>

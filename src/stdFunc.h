@@ -1,6 +1,9 @@
+// Implementace překladače imperativního jazyka IFJ26
 // stdFunc.h
-// Autor: Martin Knotek, FIT
-// Autor: Filip Maxa, FIT
+// Implementace standardních funkcí v IFJcode26
+
+// Autor: Martin Knotek (xknotem00)
+// Autor: Filip Maxa (xmaxafi00)
 
 #ifndef STDFUNC_H
 #define STDFUNC_H

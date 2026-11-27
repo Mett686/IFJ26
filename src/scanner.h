@@ -1,5 +1,8 @@
+// Implementace překladače imperativního jazyka IFJ26
 // scanner.h
-// Autor: Filip Maxa, FIT
+// Rozhraní lexikálního analyzátoru
+
+// Autor: Filip Maxa (xmaxafi00)
 
 #ifndef SCANNER_H
 #define SCANNER_H

@@ -1,5 +1,8 @@
+// Implementace překladače imperativního jazyka IFJ26
 // htab_private.h
-// Autor: Martin Knotek, FIT
+// Interní definice hashovací tabulky
+
+// Autor: Martin Knotek (xknotem00)
 
 #ifndef HTAB_PRIVATE_H
 #define HTAB_PRIVATE_H

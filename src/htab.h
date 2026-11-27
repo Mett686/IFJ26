@@ -1,5 +1,8 @@
+// Implementace překladače imperativního jazyka IFJ26
 // htab.h
-// Autor: Martin Knotek, FIT
+// Rozhraní hashovací tabulky
+
+// Autor: Martin Knotek (xknotem00)
 
 #ifndef HTAB_H
 #define HTAB_H

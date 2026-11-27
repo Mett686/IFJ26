@@ -1,5 +1,8 @@
+// Implementace překladače imperativního jazyka IFJ26
 // htab.c
-// Autor: Martin Knotek, FIT
+// Implementace hashovací tabulky
+
+// Autor: Martin Knotek (xknotem00)
 // Kod prebran a upraven z projektu do IJC
 
 

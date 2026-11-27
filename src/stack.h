@@ -1,4 +1,8 @@
-//autor: xmiklej00
+// Implementace překladače imperativního jazyka IFJ26
+// stack.h
+// Rozhraní zásobníku pro syntaktickou analýzu
+
+// Autor: Jakub Miklenčič (xmiklej00)
 
 #ifndef STACK_H
 #define STACK_H

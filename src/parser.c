@@ -1,4 +1,9 @@
-//autor: xmiklej00
+// Implementace překladače imperativního jazyka IFJ26
+// parser.c
+// Syntaktická analýza
+
+// Autor: Jakub Miklenčič (xmiklej00)
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
